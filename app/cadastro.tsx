@@ -18,19 +18,29 @@ export default function CadastroScreen() {
   const [senha, setSenha] = useState('');
 
   async function handleRegister() {
-    if (!nome || !email || !senha) {
-      Alert.alert('Atenção', 'Preencha todos os campos.');
-      return;
-    }
-
-    try {
-      const data = await registerMutation.mutateAsync({ nome, email, senha });
-      await signIn(data);
-      router.replace('/home');
-    } catch (error: any) {
-      Alert.alert('Falha no cadastro', error?.response?.data?.message ?? 'Não foi possível concluir o cadastro.');
-    }
+  if (!nome || !email || !senha) {
+    Alert.alert('Atenção', 'Preencha todos os campos.');
+    return;
   }
+
+  try {
+    const data = await registerMutation.mutateAsync({
+      nome,
+      email,
+      senha,
+      privacidade: 'público',
+    });
+
+    await signIn(data);
+    router.replace('/home');
+  } catch (error: any) {
+    console.log('REGISTER ERROR:', error?.response?.data || error?.message || error);
+    Alert.alert(
+      'Falha no cadastro',
+      JSON.stringify(error?.response?.data || error?.message || 'Não foi possível concluir o cadastro.')
+    );
+  }
+}
 
   return (
     <AppContainer>
