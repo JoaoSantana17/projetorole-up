@@ -21,6 +21,7 @@ export type RegisterPayload = {
   nome: string;
   email: string;
   senha: string;
+  privacidade: 'público' | 'amigos' | 'privado';
 };
 
 export type Role = {
