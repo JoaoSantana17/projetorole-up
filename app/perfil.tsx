@@ -1,133 +1,131 @@
-import { Feather, MaterialIcons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
-import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { AppContainer } from '@/components/AppContainer';
+import { AppHeader } from '@/components/AppHeader';
+import { FeedbackState } from '@/components/FeedbackState';
+import { LoadingState } from '@/components/LoadingState';
+import { useAuth } from '@/src/contexts/AuthContext';
+import { useAppTheme } from '@/src/contexts/ThemeContext';
+import { useProfileQuery, useUpdateProfileMutation } from '@/src/hooks/queries/useProfile';
+import { useRouter } from 'expo-router';
+import React from 'react';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-export default function Perfil() {
+export default function PerfilScreen() {
   const router = useRouter();
+  const { colors, mode, toggleTheme } = useAppTheme();
+  const { signOut, updateUser } = useAuth();
+  const profileQuery = useProfileQuery();
+  const updateMutation = useUpdateProfileMutation();
 
-  
-  const [nome, setNome] = useState("João Vitor");
-  const [username, setUsername] = useState("@usuario.role");
-  const [email, setEmail] = useState("joao@email.com");
-  const [telefone, setTelefone] = useState("(11) 99999-9999");
+  async function handleQuickProfileUpdate() {
+    if (!profileQuery.data) return;
+    try {
+      const updated = await updateMutation.mutateAsync({
+        nome: profileQuery.data.nome,
+        username: profileQuery.data.username || '@roleapp',
+      });
+      await updateUser(updated);
+      Alert.alert('Perfil atualizado', 'Suas informações foram salvas com sucesso.');
+    } catch (error: any) {
+      Alert.alert('Erro', error?.response?.data?.message ?? 'Não foi possível salvar suas alterações.');
+    }
+  }
 
-  
-  useEffect(() => {
-    const carregarDados = async () => {
-      const nomeSalvo = await AsyncStorage.getItem("userNome");
-      const usernameSalvo = await AsyncStorage.getItem("userUsername");
-      const emailSalvo = await AsyncStorage.getItem("userEmail");
-      const telefoneSalvo = await AsyncStorage.getItem("userTelefone");
-
-      if (nomeSalvo) setNome(nomeSalvo);
-      if (usernameSalvo) setUsername(usernameSalvo);
-      if (emailSalvo) setEmail(emailSalvo);
-      if (telefoneSalvo) setTelefone(telefoneSalvo);
-    };
-
-    carregarDados();
-  }, []);
+  async function handleLogout() {
+    await signOut();
+    router.replace('/login');
+  }
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={{ alignItems: "center", paddingBottom: 40 }}
-    >
-      <View style={styles.avatarContainer}>
-        <Image source={require("../assets/profile-placeholder.png")} style={styles.avatar} />
-      </View>
+    <AppContainer>
+      <AppHeader title="Meu perfil" back />
+      {profileQuery.isLoading ? (
+        <LoadingState label="Carregando perfil" />
+      ) : profileQuery.isError || !profileQuery.data ? (
+        <FeedbackState title="Não foi possível carregar seu perfil agora." actionLabel="Tentar novamente" onAction={() => profileQuery.refetch()} />
+      ) : (
+        <View style={styles.container}>
+          <View style={[styles.heroCard, { backgroundColor: colors.surface, borderColor: colors.border }]}> 
+            <View style={[styles.avatar, { backgroundColor: colors.primarySoft }]}>
+              <Text style={[styles.avatarText, { color: colors.primary }]}>{profileQuery.data.nome.slice(0, 1).toUpperCase()}</Text>
+            </View>
+            <Text style={[styles.name, { color: colors.text }]}>{profileQuery.data.nome}</Text>
+            <Text style={[styles.meta, { color: colors.textMuted }]}>{profileQuery.data.email}</Text>
+            <Text style={[styles.meta, { color: colors.textMuted }]}>{profileQuery.data.username || '@roleapp'}</Text>
+          </View>
 
-      <Text style={styles.name}>{nome}</Text>
-      <Text style={styles.username}>{username}</Text>
+          <View style={[styles.infoCard, { backgroundColor: colors.surface, borderColor: colors.border }]}> 
+            <Text style={[styles.infoTitle, { color: colors.text }]}>Preferências</Text>
+            <Text style={[styles.infoText, { color: colors.textMuted }]}>Tema atual: {mode === 'dark' ? 'Escuro' : 'Claro'}</Text>
+          </View>
 
-      
-      <View style={styles.infoCard}>
-        <View style={styles.infoRow}>
-          <Feather name="mail" size={20} color="#d909a4" />
-          <Text style={styles.infoText}>{email}</Text>
+          <TouchableOpacity style={[styles.button, { backgroundColor: colors.primary }]} onPress={handleQuickProfileUpdate}>
+            <Text style={styles.buttonText}>{updateMutation.isPending ? 'Salvando alterações...' : 'Salvar alterações'}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={[styles.secondaryButton, { backgroundColor: colors.surfaceAlt }]} onPress={toggleTheme}>
+            <Text style={[styles.secondaryButtonText, { color: colors.text }]}>{mode === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={[styles.logoutButton, { backgroundColor: colors.danger }]} onPress={handleLogout}>
+            <Text style={styles.buttonText}>Sair da conta</Text>
+          </TouchableOpacity>
         </View>
-        <View style={styles.infoRow}>
-          <Feather name="phone" size={20} color="#d909a4" />
-          <Text style={styles.infoText}>{telefone}</Text>
-        </View>
-      </View>
-
-      
-      <TouchableOpacity style={styles.actionButton} onPress={() => router.push("./editar-perfil")}>
-        <Feather name="edit" size={20} color="#fff" />
-        <Text style={styles.actionText}>Editar Perfil</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={[styles.actionButton, { backgroundColor: "#fff", borderWidth: 1, borderColor: "#d909a4" }]}
-        onPress={() => router.push("./home")}
-      >
-        <MaterialIcons name="logout" size={20} color="#d909a4" />
-        <Text style={[styles.actionText, { color: "#d909a4" }]}>Sair</Text>
-      </TouchableOpacity>
-    </ScrollView>
+      )}
+    </AppContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#210b34",
-    paddingTop: 40,
-  },
-  avatarContainer: {
-    backgroundColor: "#d909a4",
-    padding: 4,
-    borderRadius: 100,
-    marginBottom: 16,
-  },
-  avatar: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-  },
-  name: {
-    color: "#fff",
-    fontSize: 24,
-    fontWeight: "bold",
-  },
-  username: {
-    color: "#fff6",
-    fontSize: 16,
-    marginBottom: 24,
-  },
-  infoCard: {
-    width: "90%",
-    backgroundColor: "#fff1",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
-  },
-  infoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  infoText: {
-    color: "#fff",
-    marginLeft: 12,
-    fontSize: 16,
-  },
-  actionButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#d909a4",
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    marginBottom: 16,
-  },
-  actionText: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 16,
-    marginLeft: 8,
-  },
+  container: { padding: 24, 
+               gap: 14 },
+  heroCard: { borderWidth: 1, 
+              borderRadius: 26, 
+              padding: 22, 
+              alignItems: 'center' },
+
+  avatar: { width: 78, 
+            height: 78, 
+            borderRadius: 39, 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            marginBottom: 14 },
+
+  avatarText: { fontSize: 28, 
+                fontWeight: '900' },
+
+  name: { fontSize: 26, 
+          fontWeight: '900', 
+          marginBottom: 6 },
+
+  meta: { fontSize: 15, 
+          marginBottom: 2 },
+
+  infoCard: { borderWidth: 1, 
+              borderRadius: 22, 
+              padding: 18, 
+              gap: 6 },
+
+  infoTitle: { fontSize: 16, 
+               fontWeight: '800' },
+
+  infoText: { lineHeight: 20 },
+
+  button: { borderRadius: 16, 
+            paddingVertical: 16, 
+            alignItems: 'center' },
+
+  secondaryButton: { borderRadius: 16, 
+                     paddingVertical: 16, 
+                     alignItems: 'center' },
+
+  logoutButton: { borderRadius: 16, 
+                  paddingVertical: 16, 
+                  alignItems: 'center' },
+
+  buttonText: { color: '#fff', 
+                fontWeight: '900', 
+                fontSize: 16 },
+
+  secondaryButtonText: { fontWeight: '800', 
+                         fontSize: 15 },
 });

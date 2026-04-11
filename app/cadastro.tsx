@@ -1,68 +1,80 @@
-import { useRouter } from "expo-router";
-import React, { useState } from "react";
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import InputField from "./components/InputField";
+import { AppContainer } from '@/components/AppContainer';
+import { AppHeader } from '@/components/AppHeader';
+import { AppInput } from '@/components/AppInput';
+import { useAuth } from '@/src/contexts/AuthContext';
+import { useAppTheme } from '@/src/contexts/ThemeContext';
+import { useRegisterMutation } from '@/src/hooks/queries/useAuthMutations';
+import { useRouter } from 'expo-router';
+import React, { useState } from 'react';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-export default function Cadastro() {
+export default function CadastroScreen() {
   const router = useRouter();
-  const [nome, setNome] = useState("");
-  const [email, setEmail] = useState("");
-  const [senha, setSenha] = useState("");
+  const { colors } = useAppTheme();
+  const { signIn } = useAuth();
+  const registerMutation = useRegisterMutation();
+  const [nome, setNome] = useState('');
+  const [email, setEmail] = useState('');
+  const [senha, setSenha] = useState('');
 
-  const handleCadastro = () => {
-    if (nome && email && senha) {
-      alert("Cadastro realizado!");
-      router.push("./login");
-    } else {
-      alert("Preencha todos os campos!");
+  async function handleRegister() {
+    if (!nome || !email || !senha) {
+      Alert.alert('Atenção', 'Preencha todos os campos.');
+      return;
     }
-  };
+
+    try {
+      const data = await registerMutation.mutateAsync({ nome, email, senha });
+      await signIn(data);
+      router.replace('/home');
+    } catch (error: any) {
+      Alert.alert('Falha no cadastro', error?.response?.data?.message ?? 'Não foi possível concluir o cadastro.');
+    }
+  }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Criar Conta</Text>
+    <AppContainer>
+      <AppHeader title="Criar conta" back />
+      <View style={styles.container}>
+        <View style={[styles.heroCard, { backgroundColor: colors.surface, borderColor: colors.border }]}> 
+          <Text style={[styles.title, { color: colors.text }]}>Seu próximo rolê começa aqui</Text>
+          <Text style={[styles.subtitle, { color: colors.textMuted }]}>Crie sua conta para organizar eventos, acompanhar presenças e manter sua turma conectada.</Text>
+        </View>
 
-      <InputField label="Nome" value={nome} onChangeText={setNome} placeholder="Seu nome" />
-      <InputField label="E-mail" value={email} onChangeText={setEmail} placeholder="Seu e-mail" />
-      <InputField label="Senha" value={senha} onChangeText={setSenha} placeholder="Sua senha" secureTextEntry />
+        <AppInput label="Nome" value={nome} onChangeText={setNome} placeholder="Como você quer aparecer" />
+        <AppInput label="E-mail" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholder="voce@email.com" />
+        <AppInput label="Senha" value={senha} onChangeText={setSenha} secureTextEntry placeholder="Crie uma senha segura" />
 
-      <TouchableOpacity style={styles.button} onPress={handleCadastro}>
-        <Text style={styles.buttonText}>Cadastrar</Text>
-      </TouchableOpacity>
-
-      <View style={styles.loginContainer}>
-        <Text style={styles.loginText}>Já tem uma conta?</Text>
-        <TouchableOpacity onPress={() => router.push("./login")}>
-          <Text style={styles.loginLink}>Login</Text>
+        <TouchableOpacity style={[styles.button, { backgroundColor: colors.primary }]} onPress={handleRegister} disabled={registerMutation.isPending}>
+          <Text style={styles.buttonText}>{registerMutation.isPending ? 'Criando conta...' : 'Finalizar cadastro'}</Text>
         </TouchableOpacity>
       </View>
-    </ScrollView>
+    </AppContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flexGrow: 1,
-    backgroundColor: "#0b0014",
-    padding: 24,
-    justifyContent: "center",
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#f72585",
-    marginBottom: 24,
-    textAlign: "center",
-  },
-  button: {
-    backgroundColor: "#f72585",
-    paddingVertical: 14,
-    borderRadius: 24,
-    marginTop: 12,
-    alignItems: "center",
-  },
-  buttonText: { color: "#fff", fontSize: 18, fontWeight: "bold" },
-  loginContainer: { flexDirection: "row", justifyContent: "center", marginTop: 16 },
-  loginText: { color: "#fff", marginRight: 4 },
-  loginLink: { color: "#f72585", fontWeight: "bold", textDecorationLine: "underline" },
+  container: { flex: 1, 
+               padding: 24 },
+
+  heroCard: { borderWidth: 1,
+              borderRadius: 24,
+              padding: 22,
+              gap: 8,
+              marginBottom: 20 },
+
+  title: { fontSize: 24, 
+           fontWeight: '900' },
+
+  subtitle: { lineHeight: 22, 
+              fontSize: 15 },
+
+  button: { borderRadius: 16, 
+            paddingVertical: 16, 
+            alignItems: 'center', 
+            marginTop: 8 },
+
+  buttonText: { color: '#fff', 
+                fontWeight: '900', 
+                fontSize: 16 },
 });
