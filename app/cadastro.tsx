@@ -32,7 +32,7 @@ export default function CadastroScreen() {
     });
 
     await signIn(data);
-    router.replace('/home');
+    router.replace('/(tabs)/home');
   } catch (error: any) {
     console.log('REGISTER ERROR:', error?.response?.data || error?.message || error);
     Alert.alert(
