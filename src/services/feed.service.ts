@@ -8,6 +8,7 @@ type BackendPost = {
   conteudo: string;
   imagem?: string | null;
   data_postagem?: string;
+  autor_nome?: string | null;
 };
 
 type BackendComment = {
@@ -16,6 +17,7 @@ type BackendComment = {
   id_usuario: number;
   conteudo: string;
   data_comentario?: string;
+  autor_nome?: string | null;
 };
 
 function mapPost(item: BackendPost): Post {
@@ -26,6 +28,7 @@ function mapPost(item: BackendPost): Post {
     conteudo: item.conteudo,
     imagem: item.imagem ?? undefined,
     dataPostagem: item.data_postagem,
+    autorNome: item.autor_nome ?? `Usuário ${item.id_usuario}`,
   };
 }
 
@@ -36,6 +39,7 @@ function mapComment(item: BackendComment): Comment {
     usuarioId: String(item.id_usuario),
     conteudo: item.conteudo,
     dataComentario: item.data_comentario,
+    autorNome: item.autor_nome ?? `Usuário ${item.id_usuario}`,
   };
 }
 
