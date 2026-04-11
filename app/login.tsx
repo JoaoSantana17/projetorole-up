@@ -24,7 +24,7 @@ export default function LoginScreen() {
     try {
       const data = await loginMutation.mutateAsync({ email, senha });
       await signIn(data);
-      router.replace('/home');
+      router.replace('/(tabs)/home');
     } catch (error: any) {
       Alert.alert('Falha no login', error?.response?.data?.message ?? 'Não foi possível autenticar no backend.');
     }
