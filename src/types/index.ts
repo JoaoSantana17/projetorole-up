@@ -57,3 +57,32 @@ export type PresencePayload = {
   status: 'CONFIRMADO' | 'AGUARDANDO' | 'CANCELADO';
   observacao?: string;
 };
+
+export type FriendshipStatus = 'pendente' | 'aceito' | 'bloqueado';
+
+export type Friendship = {
+  id: string;
+  usuario1Id: string;
+  usuario2Id: string;
+  status: FriendshipStatus;
+  dataCriacao?: string;
+};
+
+export type Post = {
+  id: string;
+  usuarioId: string;
+  roleId: string;
+  conteudo: string;
+  imagem?: string;
+  dataPostagem?: string;
+  autorNome?: string;
+};
+
+export type Comment = {
+  id: string;
+  publicacaoId: string;
+  usuarioId: string;
+  conteudo: string;
+  dataComentario?: string;
+  autorNome?: string;
+};
