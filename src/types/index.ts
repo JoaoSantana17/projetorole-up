@@ -86,3 +86,12 @@ export type Comment = {
   dataComentario?: string;
   autorNome?: string;
 };
+
+export type NotificationType = 'saiu' | 'chegou' | 'rolê finalizado';
+
+export type AppNotification = {
+  id: string;
+  mensagem: string;
+  tipo: NotificationType;
+  dataHora?: string;
+};
