@@ -28,6 +28,7 @@ export const friendshipsService = {
   async create(targetUserId: string) {
     const { data } = await backendHttp.post<BackendFriendship>('/social/amizades', {
       id_usuario_2: Number(targetUserId),
+      status: 'pendente',
     });
     return mapFriendship(data);
   },
