@@ -123,6 +123,19 @@ O projeto foi desenvolvido com foco em:
 
 ## Preview
 
+### Login/Cadastro
+<p align="center">
+  <img src="assets/screenshots/cadastro.jpeg" width="250" />
+</p>
+
+---
+
+<p align="center">
+  <img src="assets/screenshots/login.jpeg" width="250" />
+</p>
+
+---
+
 ### Home
 <p align="center">
   <img src="assets/screenshots/home.jpeg" width="250" />
@@ -161,4 +174,52 @@ O projeto foi desenvolvido com foco em:
 ### Editar Perfil
 <p align="center">
   <img src="assets/screenshots/editar-perfil.jpeg" width="250" />
+</p>
+
+<h1 align="center">Tema Claro</h1>
+
+### Login/Cadastro
+<p align="center">
+  <img src="assets/screenshots/cadastrob.jpeg" width="250" />
+</p>
+
+---
+
+<p align="center">
+  <img src="assets/screenshots/loginb.jpeg" width="250" />
+</p>
+
+---
+
+### Home
+<p align="center">
+  <img src="assets/screenshots/homeb.jpeg" width="250" />
+</p>
+
+---
+
+### Detalhes do Rolê
+<p align="center">
+  <img src="assets/screenshots/detalhesb.jpeg" width="250" />
+</p>
+
+---
+
+### Feed Social
+<p align="center">
+  <img src="assets/screenshots/feedb.jpeg" width="250" />
+</p>
+
+---
+
+### Amizades
+<p align="center">
+  <img src="assets/screenshots/amizadesb.jpeg" width="250" />
+</p>
+
+---
+
+### Perfil
+<p align="center">
+  <img src="assets/screenshots/perfilb.jpeg" width="250" />
 </p>
