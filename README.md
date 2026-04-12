@@ -1,6 +1,8 @@
 - João Vitor Lopes Santana RM560781
 - Adão Yuri Ferreir da Silva RM559223
 
+- Link Vídeo: https://www.youtube.com/watch?v=TeHJiiWlqAA
+
 <h1 align="center"> Rolé App</h1>
 
 <p align="center">
