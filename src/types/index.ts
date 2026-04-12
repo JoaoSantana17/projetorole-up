@@ -95,3 +95,12 @@ export type AppNotification = {
   tipo: NotificationType;
   dataHora?: string;
 };
+
+export type UserProfile = {
+  id?: string;
+  nome: string;
+  email: string;
+  telefone?: string | null;
+  dataNascimento?: string | null;
+  privacidade?: 'público' | 'amigos' | 'privado';
+};
