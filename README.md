@@ -120,3 +120,45 @@ O projeto foi desenvolvido com foco em:
 | **Presenças** | Controle via APEX |
 
 ---
+
+## Preview
+
+### Home
+<p align="center">
+  <img src="assets/screenshots/home.jpeg" width="250" />
+</p>
+
+---
+
+### Detalhes do Rolê
+<p align="center">
+  <img src="assets/screenshots/detalhes.jpeg" width="250" />
+</p>
+
+---
+
+### Feed Social
+<p align="center">
+  <img src="assets/screenshots/feed.jpeg" width="250" />
+</p>
+
+---
+
+### Amizades
+<p align="center">
+  <img src="assets/screenshots/amizades.jpeg" width="250" />
+</p>
+
+---
+
+### Perfil
+<p align="center">
+  <img src="assets/screenshots/perfil.jpeg" width="250" />
+</p>
+
+---
+
+### Editar Perfil
+<p align="center">
+  <img src="assets/screenshots/editar-perfil.jpeg" width="250" />
+</p>
