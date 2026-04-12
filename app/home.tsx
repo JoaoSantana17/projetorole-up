@@ -81,9 +81,7 @@ export default function HomeScreen() {
           </Text>
         </View>
 
-        <Text style={[styles.roleTitle, { color: colors.text }]}>
-          {item.nome}
-        </Text>
+        <Text style={[styles.roleTitle, { color: colors.text }]}>{item.nome}</Text>
 
         <Text style={[styles.roleDescription, { color: colors.textMuted }]}>
           {item.descricao || 'Sem descrição informada.'}
@@ -128,7 +126,7 @@ export default function HomeScreen() {
         title="Início"
         rightSlot={
           <TouchableOpacity
-            onPress={() => setShowNotifications(true)}
+            onPress={() => router.push('/criar-role')} // Redireciona para a tela de criação do rolê
             style={[
               styles.notificationButton,
               {
@@ -138,21 +136,8 @@ export default function HomeScreen() {
             ]}
           >
             <Text style={[styles.notificationIcon, { color: colors.primary }]}>
-              🔔
+              ✍️
             </Text>
-
-            {notifications.length > 0 && (
-              <View
-                style={[
-                  styles.notificationCount,
-                  { backgroundColor: colors.primary },
-                ]}
-              >
-                <Text style={styles.notificationCountText}>
-                  {notifications.length > 9 ? '9+' : notifications.length}
-                </Text>
-              </View>
-            )}
           </TouchableOpacity>
         }
       />
@@ -182,7 +167,12 @@ export default function HomeScreen() {
             </View>
 
             <View style={styles.statsRow}>
-              <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <View
+                style={[
+                  styles.statCard,
+                  { backgroundColor: colors.surface, borderColor: colors.border },
+                ]}
+              >
                 <Text style={[styles.statValue, { color: colors.text }]}>
                   {rolesQuery.data?.length ?? 0}
                 </Text>
@@ -191,7 +181,12 @@ export default function HomeScreen() {
                 </Text>
               </View>
 
-              <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <View
+                style={[
+                  styles.statCard,
+                  { backgroundColor: colors.surface, borderColor: colors.border },
+                ]}
+              >
                 <Text style={[styles.statValue, { color: colors.text }]}>
                   {activeRolesCount}
                 </Text>
@@ -200,7 +195,12 @@ export default function HomeScreen() {
                 </Text>
               </View>
 
-              <View style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <View
+                style={[
+                  styles.statCard,
+                  { backgroundColor: colors.surface, borderColor: colors.border },
+                ]}
+              >
                 <Text style={[styles.statValue, { color: colors.text }]}>
                   {notifications.length}
                 </Text>
@@ -246,9 +246,7 @@ export default function HomeScreen() {
                     {notificationLabel(item.tipo)}
                   </Text>
 
-                  <Text style={{ color: colors.text }}>
-                    {item.mensagem}
-                  </Text>
+                  <Text style={{ color: colors.text }}>{item.mensagem}</Text>
 
                   <Text style={{ color: colors.textMuted, fontSize: 12 }}>
                     {item.dataHora
@@ -261,9 +259,7 @@ export default function HomeScreen() {
                 notificationsQuery.isLoading ? (
                   <ActivityIndicator color={colors.primary} />
                 ) : (
-                  <Text style={{ color: colors.textMuted }}>
-                    Nenhuma notificação
-                  </Text>
+                  <Text style={{ color: colors.textMuted }}>Nenhuma notificação</Text>
                 )
               }
             />
