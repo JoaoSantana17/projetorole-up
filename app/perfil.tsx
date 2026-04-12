@@ -17,18 +17,25 @@ export default function PerfilScreen() {
   const updateMutation = useUpdateProfileMutation();
 
   async function handleQuickProfileUpdate() {
-    if (!profileQuery.data) return;
-    try {
-      const updated = await updateMutation.mutateAsync({
-        nome: profileQuery.data.nome,
-        username: profileQuery.data.username || '@roleapp',
-      });
-      await updateUser(updated);
-      Alert.alert('Perfil atualizado', 'Suas informações foram salvas com sucesso.');
-    } catch (error: any) {
-      Alert.alert('Erro', error?.response?.data?.message ?? 'Não foi possível salvar suas alterações.');
-    }
+  if (!profileQuery.data) return;
+
+  try {
+    await updateMutation.mutateAsync({
+      nome: profileQuery.data.nome,
+      email: profileQuery.data.email,
+      telefone: profileQuery.data.telefone ?? null,
+      dataNascimento: profileQuery.data.dataNascimento ?? null,
+      privacidade: profileQuery.data.privacidade ?? 'público',
+    });
+
+    Alert.alert('Perfil atualizado', 'Suas informações foram salvas com sucesso.');
+  } catch (error: any) {
+    Alert.alert(
+      'Erro',
+      error?.response?.data?.message ?? 'Não foi possível salvar suas alterações.'
+    );
   }
+}
 
   async function handleLogout() {
     await signOut();
@@ -50,7 +57,7 @@ export default function PerfilScreen() {
             </View>
             <Text style={[styles.name, { color: colors.text }]}>{profileQuery.data.nome}</Text>
             <Text style={[styles.meta, { color: colors.textMuted }]}>{profileQuery.data.email}</Text>
-            <Text style={[styles.meta, { color: colors.textMuted }]}>{profileQuery.data.username || '@roleapp'}</Text>
+            <Text style={[styles.meta, { color: colors.textMuted }]}> Privacidade: {profileQuery.data.privacidade || 'público'}</Text>
           </View>
 
           <View style={[styles.infoCard, { backgroundColor: colors.surface, borderColor: colors.border }]}> 

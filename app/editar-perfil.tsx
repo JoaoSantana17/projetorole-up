@@ -1,147 +1,266 @@
-import { Feather } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AppContainer } from '@/components/AppContainer';
+import { AppHeader } from '@/components/AppHeader';
+import { FeedbackState } from '@/components/FeedbackState';
+import InputField from '@/components/InputField';
+import { LoadingState } from '@/components/LoadingState';
+import { useAppTheme } from '@/src/contexts/ThemeContext';
+import { useProfileQuery, useUpdateProfileMutation } from '@/src/hooks/queries/useProfile';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import InputField from '../components/InputField';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-export default function EditarPerfil() {
+export default function EditarPerfilScreen() {
   const router = useRouter();
+  const { colors } = useAppTheme();
+
+  const profileQuery = useProfileQuery();
+  const updateProfileMutation = useUpdateProfileMutation();
 
   const [nome, setNome] = useState('');
-  const [username, setUsername] = useState('');
-  const [salvando, setSalvando] = useState(false);
-  const [carregando, setCarregando] = useState(true);
+  const [email, setEmail] = useState('');
+  const [telefone, setTelefone] = useState('');
+  const [dataNascimento, setDataNascimento] = useState('');
+  const [privacidade, setPrivacidade] = useState<'público' | 'amigos' | 'privado'>('público');
 
   useEffect(() => {
-    (async () => {
-      try {
-        const nomeSalvo = (await AsyncStorage.getItem('userNome')) ?? '';
-        const usernameSalvo = (await AsyncStorage.getItem('userUsername')) ?? '';
-        setNome(nomeSalvo);
-        setUsername(usernameSalvo || '@usuario.role');
-      } finally {
-        setCarregando(false);
-      }
-    })();
-  }, []);
+    if (profileQuery.data) {
+      setNome(profileQuery.data.nome ?? '');
+      setEmail(profileQuery.data.email ?? '');
+      setTelefone(profileQuery.data.telefone ?? '');
+      setDataNascimento(profileQuery.data.dataNascimento ?? '');
+      setPrivacidade(
+        (profileQuery.data.privacidade as 'público' | 'amigos' | 'privado') ?? 'público'
+      );
+    }
+  }, [profileQuery.data]);
 
-  const handleSalvar = async () => {
-    const nomeOk = nome.trim();
-    let usernameOk = username.trim();
-
-    if (!nomeOk) {
-      Alert.alert('Atenção', 'O nome é obrigatório.');
+  async function handleSave() {
+    if (!nome || !email) {
+      Alert.alert('Atenção', 'Nome e e-mail são obrigatórios.');
       return;
     }
 
-    if (usernameOk && !usernameOk.startsWith('@')) {
-      usernameOk = `@${usernameOk}`;
-    }
-    if (!usernameOk) {
-      const slug = nomeOk
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/\p{Diacritic}/gu, '')
-        .replace(/[^a-z0-9]+/g, '')
-        .slice(0, 18);
-      usernameOk = `@${slug || 'usuario'}`;
-    }
-
     try {
-      setSalvando(true);
-      await AsyncStorage.setItem('userNome', nomeOk);
-      await AsyncStorage.setItem('userUsername', usernameOk);
-      Alert.alert('Tudo certo', 'Seu perfil foi atualizado com sucesso.');
-      router.back();
-    } catch {
-      Alert.alert('Erro', 'Não foi possível salvar. Tente novamente.');
-    } finally {
-      setSalvando(false);
+      await updateProfileMutation.mutateAsync({
+        nome,
+        email,
+        telefone: telefone || null,
+        dataNascimento: dataNascimento || null,
+        privacidade,
+      });
+
+      Alert.alert('Sucesso', 'Perfil atualizado com sucesso.');
+      router.replace('/(tabs)/perfil');
+    } catch (error: any) {
+      Alert.alert(
+        'Erro',
+        error?.response?.data?.message ??
+          JSON.stringify(error?.response?.data || error?.message || 'Não foi possível salvar o perfil.')
+      );
     }
-  };
+  }
+
+  if (profileQuery.isLoading) {
+    return (
+      <AppContainer>
+        <LoadingState label="Carregando perfil para edição" />
+      </AppContainer>
+    );
+  }
+
+  if (profileQuery.isError || !profileQuery.data) {
+    return (
+      <AppContainer>
+        <FeedbackState
+          title="Não foi possível carregar os dados do perfil."
+          actionLabel="Tentar novamente"
+          onAction={() => profileQuery.refetch()}
+        />
+      </AppContainer>
+    );
+  }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.heroCard}>
-        <View style={styles.avatarContainer}>
-          <Image source={require('../assets/profile-placeholder.png')} style={styles.avatar} />
-          <TouchableOpacity style={styles.editAvatarButton} disabled>
-            <Feather name="camera" size={18} color="#fff" />
-          </TouchableOpacity>
+    <AppContainer>
+      <AppHeader title="Editar perfil" back />
+
+      <ScrollView contentContainerStyle={styles.container}>
+        <View
+          style={[
+            styles.heroCard,
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
+            },
+          ]}
+        >
+          <Text style={[styles.title, { color: colors.text }]}>
+            Atualize seus dados
+          </Text>
+          <Text style={[styles.subtitle, { color: colors.textMuted }]}>
+            As alterações serão salvas no backend e permanecerão no app.
+          </Text>
         </View>
-        <Text style={styles.title}>Editar perfil</Text>
-        <Text style={styles.subtitle}>Atualize como você deseja aparecer para outras pessoas no app.</Text>
-      </View>
 
-      {carregando ? (
-        <ActivityIndicator color="#fff" />
-      ) : (
-        <>
-          <InputField label="Nome" value={nome} onChangeText={setNome} placeholder="Seu nome" />
-          <InputField label="Username" value={username} onChangeText={setUsername} placeholder="@usuario" />
+        <View
+          style={[
+            styles.formCard,
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
+            },
+          ]}
+        >
+          <InputField
+            label="Nome"
+            value={nome}
+            onChangeText={setNome}
+            placeholder="Seu nome"
+          />
 
-          <TouchableOpacity style={[styles.saveButton, (salvando || !nome.trim()) && { opacity: 0.7 }]} onPress={handleSalvar} disabled={salvando || !nome.trim()}>
-            {salvando ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveButtonText}>Salvar alterações</Text>}
-          </TouchableOpacity>
-        </>
-      )}
-    </ScrollView>
+          <InputField
+            label="E-mail"
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            keyboardType="email-address"
+            placeholder="voce@email.com"
+          />
+
+          <InputField
+            label="Telefone"
+            value={telefone}
+            onChangeText={setTelefone}
+            keyboardType="phone-pad"
+            placeholder="(11) 99999-9999"
+          />
+
+          <InputField
+            label="Data de nascimento"
+            value={dataNascimento}
+            onChangeText={setDataNascimento}
+            placeholder="YYYY-MM-DD"
+          />
+
+          <View style={styles.privacySection}>
+            <Text style={[styles.privacyLabel, { color: colors.text }]}>
+              Privacidade
+            </Text>
+
+            <View style={styles.privacyOptions}>
+              {(['público', 'amigos', 'privado'] as const).map((option) => {
+                const selected = privacidade === option;
+
+                return (
+                  <TouchableOpacity
+                    key={option}
+                    onPress={() => setPrivacidade(option)}
+                    style={[
+                      styles.privacyButton,
+                      {
+                        backgroundColor: selected ? colors.primarySoft : colors.background,
+                        borderColor: selected ? colors.primary : colors.border,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.privacyButtonText,
+                        { color: selected ? colors.primary : colors.text },
+                      ]}
+                    >
+                      {option}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        </View>
+
+        <TouchableOpacity
+          style={[styles.saveButton, { backgroundColor: colors.primary }]}
+          onPress={handleSave}
+          disabled={updateProfileMutation.isPending}
+        >
+          <Text style={styles.saveButtonText}>
+            {updateProfileMutation.isPending ? 'Salvando...' : 'Salvar alterações'}
+          </Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </AppContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, 
-               backgroundColor: '#11061B' }
-               ,
-  content: { paddingTop: 40, 
-             paddingHorizontal: 20, 
-             paddingBottom: 40, 
-             alignItems: 'center' },
+  container: {
+    padding: 24,
+    gap: 16,
+    paddingBottom: 120,
+  },
 
-  heroCard: { width: '100%', 
-              backgroundColor: '#1D0F2D', 
-              borderRadius: 28, 
-              padding: 24, 
-              alignItems: 'center', 
-              marginBottom: 24, 
-              borderWidth: 1, 
-              borderColor: 'rgba(255,255,255,0.10)' },
+  heroCard: {
+    borderWidth: 1,
+    borderRadius: 24,
+    padding: 20,
+    gap: 8,
+  },
 
-  title: { color: '#fff', 
-           fontSize: 26, 
-           fontWeight: '900', 
-           marginTop: 16, 
-           marginBottom: 6 },
+  title: {
+    fontSize: 24,
+    fontWeight: '900',
+  },
 
-  subtitle: { color: 'rgba(255,255,255,0.72)', 
-              textAlign: 'center', 
-              lineHeight: 22 },
+  subtitle: {
+    fontSize: 15,
+    lineHeight: 22,
+  },
 
-  avatarContainer: { position: 'relative' },
+  formCard: {
+    borderWidth: 1,
+    borderRadius: 22,
+    padding: 18,
+    gap: 14,
+  },
 
-  avatar: { width: 120, 
-            height: 120, 
-            borderRadius: 60, 
-            borderWidth: 3, 
-            borderColor: '#d909a4' },
+  privacySection: {
+    gap: 10,
+    marginTop: 4,
+  },
 
-  editAvatarButton: { position: 'absolute', 
-                      bottom: 0, 
-                      right: 0, 
-                      backgroundColor: '#d909a4', 
-                      padding: 10, 
-                      borderRadius: 24 },
+  privacyLabel: {
+    fontSize: 15,
+    fontWeight: '800',
+  },
 
-  saveButton: { marginTop: 24, 
-                backgroundColor: '#d909a4', 
-                paddingVertical: 16, 
-                paddingHorizontal: 40, 
-                borderRadius: 16, 
-                alignItems: 'center', 
-                width: '100%' },
+  privacyOptions: {
+    flexDirection: 'row',
+    gap: 10,
+    flexWrap: 'wrap',
+  },
 
-  saveButtonText: { color: '#fff', 
-                    fontWeight: '900', 
-                    fontSize: 16 },
+  privacyButton: {
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+
+  privacyButtonText: {
+    fontSize: 13,
+    fontWeight: '800',
+    textTransform: 'capitalize',
+  },
+
+  saveButton: {
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+
+  saveButtonText: {
+    color: '#fff',
+    fontWeight: '900',
+    fontSize: 16,
+  },
 });
