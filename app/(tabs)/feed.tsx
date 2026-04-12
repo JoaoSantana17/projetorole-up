@@ -8,14 +8,14 @@ import { Comment, Post, Role } from '@/src/types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import React, { useMemo, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 export default function FeedScreen() {
