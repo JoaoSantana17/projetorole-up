@@ -2,6 +2,7 @@ import { AppContainer } from '@/components/AppContainer';
 import { AppHeader } from '@/components/AppHeader';
 import { FeedbackState } from '@/components/FeedbackState';
 import { LoadingState } from '@/components/LoadingState';
+import { useAuth } from '@/src/contexts/AuthContext';
 import { useAppTheme } from '@/src/contexts/ThemeContext';
 import { useProfileQuery } from '@/src/hooks/queries/useProfile';
 import { useRouter } from 'expo-router';
@@ -10,7 +11,8 @@ import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-nati
 
 export default function PerfilScreen() {
   const router = useRouter();
-  const { colors } = useAppTheme();
+  const { colors, mode, toggleTheme } = useAppTheme();
+  const { signOut } = useAuth();
   const profileQuery = useProfileQuery();
 
   if (profileQuery.isLoading) {
@@ -134,6 +136,25 @@ export default function PerfilScreen() {
         >
           <Text style={styles.buttonText}>Editar perfil</Text>
         </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.secondaryButton, { backgroundColor: colors.surfaceAlt }]}
+          onPress={toggleTheme}
+        >
+          <Text style={[styles.secondaryButtonText, { color: colors.text }]}>
+            {mode === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.logoutButton, { backgroundColor: colors.danger }]}
+          onPress={async () => {
+            await signOut();
+            router.replace('/login');
+          }}
+        >
+          <Text style={styles.buttonText}>Sair da conta</Text>
+        </TouchableOpacity>
       </ScrollView>
     </AppContainer>
   );
@@ -219,9 +240,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
+  secondaryButton: {
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+
+  logoutButton: {
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+
   buttonText: {
     color: '#fff',
     fontWeight: '900',
     fontSize: 16,
+  },
+
+  secondaryButtonText: {
+    fontWeight: '800',
+    fontSize: 15,
   },
 });
