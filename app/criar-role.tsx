@@ -51,7 +51,7 @@ export default function CriarRoleScreen() {
     <AppContainer>
       <AppHeader title="Novo rolê" back />
       <ScrollView contentContainerStyle={styles.container}>
-        <View style={[styles.heroCard, { backgroundColor: colors.surface, borderColor: colors.border }]}> 
+        <View style={[styles.heroCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Text style={[styles.title, { color: colors.text }]}>Crie um evento do seu jeito</Text>
           <Text style={[styles.subtitle, { color: colors.textMuted }]}>Preencha as informações principais para compartilhar o rolê com a galera.</Text>
         </View>
@@ -75,26 +75,9 @@ export default function CriarRoleScreen() {
 
 const styles = StyleSheet.create({
   container: { padding: 24 },
-
-  heroCard: { borderWidth: 1, 
-              borderRadius: 24, 
-              padding: 22, 
-              gap: 8, 
-              marginBottom: 20 },
-
-  title: { fontSize: 24, 
-           fontWeight: '900' },
-
-  subtitle: { lineHeight: 22, 
-              fontSize: 15 },
-
-  button: { marginTop: 10, 
-            borderRadius: 16, 
-            paddingVertical: 16, 
-            alignItems: 'center', 
-            marginBottom: 28 },
-
-  buttonText: { color: '#fff', 
-                fontWeight: '900', 
-                fontSize: 16 },
+  heroCard: { borderWidth: 1, borderRadius: 24, padding: 22, gap: 8, marginBottom: 20 },
+  title: { fontSize: 24, fontWeight: '900' },
+  subtitle: { lineHeight: 22, fontSize: 15 },
+  button: { marginTop: 10, borderRadius: 16, paddingVertical: 16, alignItems: 'center', marginBottom: 28 },
+  buttonText: { color: '#fff', fontWeight: '900', fontSize: 16 },
 });
