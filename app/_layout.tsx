@@ -1,13 +1,18 @@
 import { AuthProvider } from '@/src/contexts/AuthContext';
 import { ThemeProvider, useAppTheme } from '@/src/contexts/ThemeContext';
 import { queryClient } from '@/src/lib/query-client';
+import { setupLocalNotifications } from '@/src/services/local-notifications.service';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React from 'react';
+import React, { useEffect } from 'react';
 
 function LayoutContent() {
   const { mode } = useAppTheme();
+
+  useEffect(() => {
+    setupLocalNotifications();
+  }, []);
 
   return (
     <>
@@ -21,6 +26,7 @@ function LayoutContent() {
         <Stack.Screen name="detalhes/[id]" />
         <Stack.Screen name="editar-role/[id]" />
         <Stack.Screen name="perfil" />
+        <Stack.Screen name="editar-perfil" />
         <Stack.Screen name="apex-presencas/[roleId]" />
       </Stack>
     </>
