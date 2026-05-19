@@ -78,6 +78,7 @@ const demoUserMap: Record<string, DemoUserDetails> = {
 
 function getUserDetails(friendship: Friendship): DemoUserDetails {
   const fallbackId = friendship.usuario2Id || friendship.usuario1Id;
+
   return (
     demoUserMap[fallbackId] ?? {
       nome: `Usuário ${fallbackId}`,
@@ -93,7 +94,7 @@ function getUserDetails(friendship: Friendship): DemoUserDetails {
 function statusLabel(status: Friendship['status']) {
   switch (status) {
     case 'aceito':
-      return 'Amizade confirmada';
+      return 'Confirmado';
     case 'bloqueado':
       return 'Bloqueado';
     default:
@@ -104,6 +105,7 @@ function statusLabel(status: Friendship['status']) {
 export default function AmizadesScreen() {
   const { colors } = useAppTheme();
   const queryClient = useQueryClient();
+
   const [targetUserId, setTargetUserId] = useState('');
   const [search, setSearch] = useState('');
 
@@ -122,7 +124,9 @@ export default function AmizadesScreen() {
     onError: (error: any) => {
       Alert.alert(
         'Erro',
-        JSON.stringify(error?.response?.data || error?.message || 'Não foi possível enviar.')
+        JSON.stringify(
+          error?.response?.data || error?.message || 'Não foi possível enviar.'
+        )
       );
     },
   });
@@ -135,7 +139,9 @@ export default function AmizadesScreen() {
     onError: (error: any) => {
       Alert.alert(
         'Erro',
-        JSON.stringify(error?.response?.data || error?.message || 'Não foi possível aceitar.')
+        JSON.stringify(
+          error?.response?.data || error?.message || 'Não foi possível aceitar.'
+        )
       );
     },
   });
@@ -148,19 +154,32 @@ export default function AmizadesScreen() {
     onError: (error: any) => {
       Alert.alert(
         'Erro',
-        JSON.stringify(error?.response?.data || error?.message || 'Não foi possível bloquear.')
+        JSON.stringify(
+          error?.response?.data || error?.message || 'Não foi possível bloquear.'
+        )
       );
     },
   });
 
+  const friendships = friendshipsQuery.data ?? [];
+
+  const stats = useMemo(() => {
+    return {
+      total: friendships.length,
+      aceitas: friendships.filter((item) => item.status === 'aceito').length,
+      pendentes: friendships.filter((item) => item.status === 'pendente').length,
+      bloqueadas: friendships.filter((item) => item.status === 'bloqueado').length,
+    };
+  }, [friendships]);
+
   const filteredData = useMemo(() => {
-    const list = friendshipsQuery.data ?? [];
     const term = search.trim().toLowerCase();
 
-    if (!term) return list;
+    if (!term) return friendships;
 
-    return list.filter((item) => {
+    return friendships.filter((item) => {
       const user = getUserDetails(item);
+
       return (
         user.nome.toLowerCase().includes(term) ||
         user.username.toLowerCase().includes(term) ||
@@ -168,22 +187,38 @@ export default function AmizadesScreen() {
         item.status.toLowerCase().includes(term)
       );
     });
-  }, [friendshipsQuery.data, search]);
+  }, [friendships, search]);
+
+  function handleSendFriendRequest() {
+    if (!targetUserId.trim()) {
+      Alert.alert('Atenção', 'Informe o ID do usuário.');
+      return;
+    }
+
+    createMutation.mutate();
+  }
 
   function renderItem({ item }: { item: Friendship }) {
     const user = getUserDetails(item);
+    const isAccepted = item.status === 'aceito';
+    const isPending = item.status === 'pendente';
+    const isBlocked = item.status === 'bloqueado';
 
     return (
       <View
         style={[
-          styles.card,
+          styles.friendCard,
           {
             backgroundColor: colors.surface,
-            borderColor: colors.border,
+            borderColor: isAccepted
+              ? colors.primary
+              : isBlocked
+                ? colors.danger
+                : colors.border,
           },
         ]}
       >
-        <View style={styles.topRow}>
+        <View style={styles.friendTop}>
           <View style={styles.userRow}>
             <View
               style={[
@@ -197,36 +232,59 @@ export default function AmizadesScreen() {
               <Text style={[styles.avatarText, { color: colors.primary }]}>
                 {user.nome.slice(0, 1).toUpperCase()}
               </Text>
+
+              <View
+                style={[
+                  styles.onlineDotFloating,
+                  {
+                    backgroundColor: user.online ? colors.primary : colors.textMuted,
+                    borderColor: colors.surface,
+                  },
+                ]}
+              />
             </View>
 
             <View style={{ flex: 1 }}>
-              <Text style={[styles.name, { color: colors.text }]}>{user.nome}</Text>
-              <Text style={[styles.username, { color: colors.textMuted }]}>{user.username}</Text>
+              <Text style={[styles.name, { color: colors.text }]}>
+                {user.nome}
+              </Text>
+
+              <Text style={[styles.username, { color: colors.textMuted }]}>
+                {user.username}
+              </Text>
             </View>
           </View>
 
           <View
             style={[
-              styles.onlineBadge,
+              styles.statusPill,
               {
-                backgroundColor: user.online ? colors.primarySoft : colors.background,
-                borderColor: colors.border,
+                backgroundColor: isAccepted
+                  ? colors.primarySoft
+                  : isBlocked
+                    ? `${colors.danger}22`
+                    : colors.background,
+                borderColor: isAccepted
+                  ? colors.primary
+                  : isBlocked
+                    ? colors.danger
+                    : colors.border,
               },
             ]}
           >
-            <View
-              style={[
-                styles.onlineDot,
-                { backgroundColor: user.online ? colors.primary : colors.textMuted },
-              ]}
-            />
             <Text
               style={[
-                styles.onlineText,
-                { color: user.online ? colors.primary : colors.textMuted },
+                styles.statusPillText,
+                {
+                  color: isAccepted
+                    ? colors.primary
+                    : isBlocked
+                      ? colors.danger
+                      : colors.textMuted,
+                },
               ]}
             >
-              {user.online ? 'Online' : 'Offline'}
+              {statusLabel(item.status)}
             </Text>
           </View>
         </View>
@@ -240,36 +298,42 @@ export default function AmizadesScreen() {
             },
           ]}
         >
-          <Text style={[styles.statusLabel, { color: colors.text }]}>
-            {statusLabel(item.status)}
+          <Text style={[styles.city, { color: colors.text }]}>
+            📍 {user.cidade}
           </Text>
-          <Text style={[styles.city, { color: colors.textMuted }]}>{user.cidade}</Text>
-          <Text style={[styles.bio, { color: colors.textMuted }]}>{user.bio}</Text>
+
+          <Text style={[styles.bio, { color: colors.textMuted }]}>
+            {user.bio}
+          </Text>
 
           <View style={styles.tagsRow}>
             {user.interesses.map((tag) => (
               <View
                 key={tag}
-                style={[
-                  styles.tag,
-                  {
-                    backgroundColor: colors.primarySoft,
-                  },
-                ]}
+                style={[styles.tag, { backgroundColor: colors.primarySoft }]}
               >
-                <Text style={[styles.tagText, { color: colors.primary }]}>{tag}</Text>
+                <Text style={[styles.tagText, { color: colors.primary }]}>
+                  {tag}
+                </Text>
               </View>
             ))}
           </View>
         </View>
 
-        <Text style={[styles.meta, { color: colors.textMuted }]}>
-          Relação #{item.id} • Usuários {item.usuario1Id} e {item.usuario2Id}
-        </Text>
+        <View style={[styles.metaRow, { borderTopColor: colors.border }]}>
+          <Text style={[styles.metaText, { color: colors.textMuted }]}>
+            Relação #{item.id}
+          </Text>
 
-        {item.status === 'pendente' ? (
+          <Text style={[styles.metaText, { color: colors.textMuted }]}>
+            Usuários {item.usuario1Id} e {item.usuario2Id}
+          </Text>
+        </View>
+
+        {isPending ? (
           <View style={styles.actionsRow}>
             <TouchableOpacity
+              activeOpacity={0.85}
               style={[styles.primaryButton, { backgroundColor: colors.primary }]}
               onPress={() => acceptMutation.mutate(item.id)}
             >
@@ -279,6 +343,7 @@ export default function AmizadesScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
+              activeOpacity={0.85}
               style={[
                 styles.secondaryButton,
                 {
@@ -298,7 +363,9 @@ export default function AmizadesScreen() {
             style={[
               styles.footerBadge,
               {
-                backgroundColor: item.status === 'aceito' ? colors.primarySoft : colors.background,
+                backgroundColor: isAccepted
+                  ? colors.primarySoft
+                  : colors.background,
                 borderColor: colors.border,
               },
             ]}
@@ -307,11 +374,11 @@ export default function AmizadesScreen() {
               style={[
                 styles.footerBadgeText,
                 {
-                  color: item.status === 'aceito' ? colors.primary : colors.textMuted,
+                  color: isAccepted ? colors.primary : colors.textMuted,
                 },
               ]}
             >
-              {item.status === 'aceito'
+              {isAccepted
                 ? 'Vocês já podem interagir nos rolês'
                 : 'Este usuário está bloqueado'}
             </Text>
@@ -328,10 +395,11 @@ export default function AmizadesScreen() {
       <FlatList
         data={filteredData}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={{ padding: 20, gap: 16, paddingBottom: 120 }}
         renderItem={renderItem}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.container}
         ListHeaderComponent={
-          <View style={{ gap: 16 }}>
+          <View style={styles.headerContent}>
             <View
               style={[
                 styles.heroCard,
@@ -341,13 +409,87 @@ export default function AmizadesScreen() {
                 },
               ]}
             >
-              <Text style={[styles.heroTitle, { color: colors.text }]}>
-                Sua rede de rolês
-              </Text>
+              <View style={styles.heroTop}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.eyebrow, { color: colors.primary }]}>
+                    REDE SOCIAL
+                  </Text>
+
+                  <Text style={[styles.heroTitle, { color: colors.text }]}>
+                    Monte sua rede para os próximos rolês
+                  </Text>
+                </View>
+
+                <View
+                  style={[
+                    styles.heroIconBox,
+                    { backgroundColor: colors.primarySoft },
+                  ]}
+                >
+                  <Text style={styles.heroIcon}>🤝</Text>
+                </View>
+              </View>
+
               <Text style={[styles.heroSubtitle, { color: colors.textMuted }]}>
-                Gerencie amizades, acompanhe quem está ativo no app e fortaleça sua rede para
-                organizar eventos com mais facilidade.
+                Envie pedidos, acompanhe amizades pendentes e veja quem já está
+                conectado com você.
               </Text>
+            </View>
+
+            <View style={styles.statsRow}>
+              <View
+                style={[
+                  styles.statCard,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
+                <Text style={styles.statIcon}>👥</Text>
+                <Text style={[styles.statValue, { color: colors.text }]}>
+                  {stats.total}
+                </Text>
+                <Text style={[styles.statLabel, { color: colors.textMuted }]}>
+                  Total
+                </Text>
+              </View>
+
+              <View
+                style={[
+                  styles.statCard,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
+                <Text style={styles.statIcon}>✅</Text>
+                <Text style={[styles.statValue, { color: colors.text }]}>
+                  {stats.aceitas}
+                </Text>
+                <Text style={[styles.statLabel, { color: colors.textMuted }]}>
+                  Aceitas
+                </Text>
+              </View>
+
+              <View
+                style={[
+                  styles.statCard,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
+                <Text style={styles.statIcon}>⏳</Text>
+                <Text style={[styles.statValue, { color: colors.text }]}>
+                  {stats.pendentes}
+                </Text>
+                <Text style={[styles.statLabel, { color: colors.textMuted }]}>
+                  Pendentes
+                </Text>
+              </View>
             </View>
 
             <View
@@ -363,6 +505,10 @@ export default function AmizadesScreen() {
                 Adicionar amizade
               </Text>
 
+              <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>
+                Digite o ID de um usuário para enviar um pedido de amizade.
+              </Text>
+
               <AppInput
                 label="ID do usuário"
                 value={targetUserId}
@@ -372,14 +518,17 @@ export default function AmizadesScreen() {
               />
 
               <TouchableOpacity
-                style={[styles.primaryButton, { backgroundColor: colors.primary }]}
-                onPress={() => {
-                  if (!targetUserId.trim()) {
-                    Alert.alert('Atenção', 'Informe o ID do usuário.');
-                    return;
-                  }
-                  createMutation.mutate();
-                }}
+                activeOpacity={0.85}
+                disabled={createMutation.isPending}
+                style={[
+                  styles.fullButton,
+                  {
+                    backgroundColor: createMutation.isPending
+                      ? colors.textMuted
+                      : colors.primary,
+                  },
+                ]}
+                onPress={handleSendFriendRequest}
               >
                 <Text style={styles.primaryButtonText}>
                   {createMutation.isPending ? 'Enviando...' : 'Enviar pedido'}
@@ -389,7 +538,7 @@ export default function AmizadesScreen() {
 
             <View
               style={[
-                styles.actionCard,
+                styles.searchCard,
                 {
                   backgroundColor: colors.surface,
                   borderColor: colors.border,
@@ -397,24 +546,43 @@ export default function AmizadesScreen() {
               ]}
             >
               <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                Buscar amizade
+                Buscar conexão
               </Text>
 
               <AppInput
                 label="Nome, username, cidade ou status"
                 value={search}
                 onChangeText={setSearch}
-                placeholder="Ex.: Maria ou pendente"
+                placeholder="Ex.: Maria, pendente ou São Paulo"
               />
             </View>
 
             <View style={styles.listHeader}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                Conexões
-              </Text>
-              <Text style={{ color: colors.textMuted }}>
-                {filteredData.length} relacionamento(s) encontrado(s)
-              </Text>
+              <View>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                  Conexões
+                </Text>
+
+                <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>
+                  {filteredData.length} relacionamento(s) encontrado(s)
+                </Text>
+              </View>
+
+              {stats.bloqueadas > 0 && (
+                <View
+                  style={[
+                    styles.blockedBadge,
+                    {
+                      backgroundColor: `${colors.danger}22`,
+                      borderColor: colors.danger,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.blockedBadgeText, { color: colors.danger }]}>
+                    {stats.bloqueadas} bloqueado(s)
+                  </Text>
+                </View>
+              )}
             </View>
           </View>
         }
@@ -432,11 +600,15 @@ export default function AmizadesScreen() {
               <ActivityIndicator color={colors.primary} />
             ) : (
               <>
+                <Text style={styles.emptyIcon}>🫂</Text>
+
                 <Text style={[styles.emptyTitle, { color: colors.text }]}>
                   Nenhuma amizade encontrada
                 </Text>
-                <Text style={{ color: colors.textMuted, textAlign: 'center' }}>
-                  Envie um pedido de amizade para começar a montar sua rede dentro do app.
+
+                <Text style={[styles.emptyText, { color: colors.textMuted }]}>
+                  Envie um pedido de amizade para começar a montar sua rede
+                  dentro do app.
                 </Text>
               </>
             )}
@@ -448,16 +620,40 @@ export default function AmizadesScreen() {
 }
 
 const styles = StyleSheet.create({
+  container: {
+    padding: 20,
+    gap: 16,
+    paddingBottom: 120,
+  },
+
+  headerContent: {
+    gap: 16,
+  },
+
   heroCard: {
     borderWidth: 1,
-    borderRadius: 24,
+    borderRadius: 28,
     padding: 20,
-    gap: 8,
+    gap: 14,
+  },
+
+  heroTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 14,
+  },
+
+  eyebrow: {
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 1,
+    marginBottom: 6,
   },
 
   heroTitle: {
-    fontSize: 24,
+    fontSize: 25,
     fontWeight: '900',
+    lineHeight: 31,
   },
 
   heroSubtitle: {
@@ -465,9 +661,56 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
 
-  actionCard: {
+  heroIconBox: {
+    width: 54,
+    height: 54,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  heroIcon: {
+    fontSize: 27,
+  },
+
+  statsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+
+  statCard: {
+    flex: 1,
     borderWidth: 1,
     borderRadius: 22,
+    padding: 14,
+    alignItems: 'center',
+    gap: 4,
+  },
+
+  statIcon: {
+    fontSize: 18,
+  },
+
+  statValue: {
+    fontSize: 23,
+    fontWeight: '900',
+  },
+
+  statLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+
+  actionCard: {
+    borderWidth: 1,
+    borderRadius: 24,
+    padding: 16,
+    gap: 12,
+  },
+
+  searchCard: {
+    borderWidth: 1,
+    borderRadius: 24,
     padding: 16,
     gap: 12,
   },
@@ -477,19 +720,46 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
 
-  listHeader: {
-    gap: 4,
-    marginTop: 4,
+  sectionSubtitle: {
+    fontSize: 13,
+    lineHeight: 19,
   },
 
-  card: {
+  fullButton: {
+    height: 50,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  listHeader: {
+    marginTop: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+
+  blockedBadge: {
     borderWidth: 1,
-    borderRadius: 22,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+
+  blockedBadgeText: {
+    fontSize: 11,
+    fontWeight: '900',
+  },
+
+  friendCard: {
+    borderWidth: 1,
+    borderRadius: 24,
     padding: 16,
     gap: 12,
   },
 
-  topRow: {
+  friendTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: 12,
@@ -503,17 +773,28 @@ const styles = StyleSheet.create({
   },
 
   avatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 54,
+    height: 54,
+    borderRadius: 27,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
+    position: 'relative',
   },
 
   avatarText: {
     fontSize: 20,
     fontWeight: '900',
+  },
+
+  onlineDotFloating: {
+    position: 'absolute',
+    right: 1,
+    bottom: 2,
+    width: 13,
+    height: 13,
+    borderRadius: 999,
+    borderWidth: 2,
   },
 
   name: {
@@ -526,41 +807,28 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
-  onlineBadge: {
+  statusPill: {
     borderWidth: 1,
     borderRadius: 999,
     paddingHorizontal: 10,
-    paddingVertical: 8,
-    flexDirection: 'row',
-    gap: 8,
-    alignItems: 'center',
+    paddingVertical: 7,
   },
 
-  onlineDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-
-  onlineText: {
-    fontSize: 12,
-    fontWeight: '800',
+  statusPillText: {
+    fontSize: 11,
+    fontWeight: '900',
   },
 
   infoBox: {
     borderWidth: 1,
-    borderRadius: 18,
+    borderRadius: 20,
     padding: 14,
     gap: 8,
   },
 
-  statusLabel: {
-    fontSize: 15,
-    fontWeight: '800',
-  },
-
   city: {
-    fontSize: 13,
+    fontSize: 14,
+    fontWeight: '800',
   },
 
   bio: {
@@ -586,7 +854,15 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
 
-  meta: {
+  metaRow: {
+    borderTopWidth: 1,
+    paddingTop: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+
+  metaText: {
     fontSize: 12,
   },
 
@@ -623,7 +899,7 @@ const styles = StyleSheet.create({
 
   footerBadge: {
     borderWidth: 1,
-    borderRadius: 14,
+    borderRadius: 16,
     paddingVertical: 12,
     paddingHorizontal: 14,
     alignItems: 'center',
@@ -637,15 +913,26 @@ const styles = StyleSheet.create({
 
   emptyCard: {
     borderWidth: 1,
-    borderRadius: 22,
+    borderRadius: 24,
     padding: 24,
     alignItems: 'center',
     gap: 8,
     marginTop: 8,
   },
 
+  emptyIcon: {
+    fontSize: 34,
+  },
+
   emptyTitle: {
     fontSize: 18,
     fontWeight: '900',
+    textAlign: 'center',
+  },
+
+  emptyText: {
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: 'center',
   },
 });
