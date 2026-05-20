@@ -4,274 +4,614 @@ import { AppInput } from '@/components/AppInput';
 import { FeedbackState } from '@/components/FeedbackState';
 import { LoadingState } from '@/components/LoadingState';
 import { useAppTheme } from '@/src/contexts/ThemeContext';
-import { useDeleteRoleMutation, useRoleDetailsQuery } from '@/src/hooks/queries/useRoles';
+import {
+  useDeleteRoleMutation,
+  useRoleDetailsQuery,
+} from '@/src/hooks/queries/useRoles';
 import { feedService } from '@/src/services/feed.service';
 import { Post } from '@/src/types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 export default function DetalhesRoleScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { colors } = useAppTheme();
+
   const roleQuery = useRoleDetailsQuery(id);
   const deleteMutation = useDeleteRoleMutation();
   const queryClient = useQueryClient();
+
   const [novoPost, setNovoPost] = useState('');
-  const [comentariosAbertos, setComentariosAbertos] = useState<Record<string, boolean>>({});
-  const [novoComentario, setNovoComentario] = useState<Record<string, string>>({});
 
-const createCommentMutation = useMutation({
-  mutationFn: ({ publicacaoId, conteudo }: { publicacaoId: string; conteudo: string }) =>
-    feedService.createComment(publicacaoId, conteudo),
-  onSuccess: (_, variables) => {
-    setNovoComentario((prev) => ({ ...prev, [variables.publicacaoId]: '' }));
-    queryClient.invalidateQueries({ queryKey: ['feed-comments', variables.publicacaoId] });
-  },
-  onError: (error: any) => {
-    Alert.alert(
-      'Erro',
-      JSON.stringify(error?.response?.data || error?.message || 'Não foi possível comentar.')
-    );
-  },
-});
+  const postsQuery = useQuery({
+    queryKey: ['feed-posts', id],
+    queryFn: () => feedService.listPostsByRole(id),
+    enabled: !!id,
+  });
 
-const postsQuery = useQuery({
-  queryKey: ['feed-posts', id],
-  queryFn: () => feedService.listPostsByRole(id),
-  enabled: !!id,
-});
-
-const createPostMutation = useMutation({
-  mutationFn: () =>
-    feedService.createPost({
-      roleId: id,
-      conteudo: novoPost,
-    }),
-  onSuccess: () => {
-    setNovoPost('');
-    queryClient.invalidateQueries({ queryKey: ['feed-posts', id] });
-    Alert.alert('Sucesso', 'Atualização publicada no feed do rolê.');
-  },
-  onError: (error: any) => {
-    Alert.alert(
-      'Erro',
-      JSON.stringify(error?.response?.data || error?.message || 'Não foi possível publicar.')
-    );
-  },
-});
+  const createPostMutation = useMutation({
+    mutationFn: () =>
+      feedService.createPost({
+        roleId: id,
+        conteudo: novoPost,
+      }),
+    onSuccess: () => {
+      setNovoPost('');
+      queryClient.invalidateQueries({ queryKey: ['feed-posts', id] });
+      Alert.alert('Sucesso', 'Atualização publicada no feed do rolê.');
+    },
+    onError: (error: any) => {
+      Alert.alert(
+        'Erro',
+        error?.response?.data?.message ?? 'Não foi possível publicar.'
+      );
+    },
+  });
 
   async function handleDelete() {
-    try {
-      await deleteMutation.mutateAsync(id);
-      router.replace('/(tabs)/home');
-    } catch (error: any) {
-      Alert.alert('Erro', error?.response?.data?.message ?? 'Não foi possível excluir este rolê.');
+    Alert.alert(
+      'Excluir rolê',
+      'Tem certeza que deseja excluir este rolê?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Excluir',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteMutation.mutateAsync(id);
+              router.replace('/home');
+            } catch (error: any) {
+              Alert.alert(
+                'Erro',
+                error?.response?.data?.message ??
+                  'Não foi possível excluir este rolê.'
+              );
+            }
+          },
+        },
+      ]
+    );
+  }
+
+  function handleCreatePost() {
+    if (!novoPost.trim()) {
+      Alert.alert('Atenção', 'Digite uma mensagem para publicar.');
+      return;
     }
+
+    createPostMutation.mutate();
   }
 
   if (roleQuery.isLoading) {
-    return <AppContainer><LoadingState label="Carregando detalhes" /></AppContainer>;
+    return (
+      <AppContainer>
+        <LoadingState label="Carregando detalhes" />
+      </AppContainer>
+    );
   }
 
   if (roleQuery.isError || !roleQuery.data) {
-    return <AppContainer><FeedbackState title="Não foi possível carregar os detalhes do rolê." actionLabel="Tentar novamente" onAction={() => roleQuery.refetch()} /></AppContainer>;
+    return (
+      <AppContainer>
+        <FeedbackState
+          title="Não foi possível carregar os detalhes do rolê."
+          actionLabel="Tentar novamente"
+          onAction={() => roleQuery.refetch()}
+        />
+      </AppContainer>
+    );
   }
 
   const role = roleQuery.data;
+  const isActive = role.status?.toLowerCase() === 'ativo';
 
   return (
     <AppContainer>
-      <AppHeader title="Detalhes do rolê" back rightLabel="Editar" onRightPress={() => router.push({ pathname: '/editar-role/[id]' as any, params: { id: role.id } })} />
-      <ScrollView contentContainerStyle={styles.container}>
-        <View style={[styles.heroCard, { backgroundColor: colors.surface, borderColor: colors.border }]}> 
-          <View style={styles.topRow}>
-            <View style={[styles.chip, { backgroundColor: colors.primarySoft }]}>
-              <Text style={[styles.chipText, { color: colors.primary }]}>{role.tipo}</Text>
-            </View>
-            <Text style={[styles.status, { color: colors.primary }]}>{role.status}</Text>
-          </View>
-          <Text style={[styles.title, { color: colors.text }]}>{role.nome}</Text>
-          <Text style={[styles.description, { color: colors.textMuted }]}>{role.descricao || 'Confira abaixo as informações principais deste evento.'}</Text>
-        </View>
+      <AppHeader
+        title="Detalhes"
+        back
+        rightLabel="Editar"
+        onRightPress={() =>
+          router.push({
+            pathname: '/editar-role/[id]' as any,
+            params: { id: role.id },
+          })
+        }
+      />
 
-        <View style={[styles.infoCard, { backgroundColor: colors.surface, borderColor: colors.border }]}> 
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Informações do evento</Text>
-          <Text style={[styles.row, { color: colors.text }]}>📍 {role.endereco}</Text>
-          <Text style={[styles.row, { color: colors.text }]}>🚇 {role.transporte}</Text>
-          <Text style={[styles.row, { color: colors.text }]}>⏱️ {role.eta}</Text>
-          {role.dataEvento ? <Text style={[styles.row, { color: colors.text }]}>🗓️ {role.dataEvento}</Text> : null}
-          {typeof role.capacidadeMaxima === 'number' ? <Text style={[styles.row, { color: colors.text }]}>👥 {role.capacidadeMaxima} vagas</Text> : null}
-        </View>
-        
-    <View style={[styles.infoCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-  <Text style={[styles.sectionTitle, { color: colors.text }]}>Feed do rolê</Text>
-
-  <Text style={{ color: colors.textMuted, marginBottom: 8 }}>
-    Aqui vão aparecer atualizações relacionadas a este rolê.
-  </Text>
-
-  <AppInput
-    label="Nova atualização"
-    value={novoPost}
-    onChangeText={setNovoPost}
-    placeholder="Ex.: Galera, chego em 15 minutos"
-  />
-
-  <TouchableOpacity
-    style={[styles.button, { backgroundColor: colors.primary, marginTop: 12 }]}
-    onPress={() => {
-      if (!novoPost.trim()) {
-        Alert.alert('Atenção', 'Digite uma mensagem para publicar.');
-        return;
-      }
-      createPostMutation.mutate();
-    }}
-  >
-    <Text style={styles.buttonText}>
-      {createPostMutation.isPending ? 'Publicando...' : 'Publicar no feed'}
-    </Text>
-  </TouchableOpacity>
-
-  <View style={{ marginTop: 16, gap: 10 }}>
-    {postsQuery.isLoading ? (
-      <LoadingState label="Carregando publicações" />
-    ) : postsQuery.data && postsQuery.data.length > 0 ? (
-      postsQuery.data.map((item: Post) => (
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.container}
+      >
         <View
-          key={item.id}
           style={[
-            styles.postCard,
+            styles.heroCard,
             {
-              backgroundColor: colors.background,
+              backgroundColor: colors.surface,
               borderColor: colors.border,
             },
           ]}
         >
-          <Text style={[styles.postAuthor, { color: colors.text }]}>
-            Usuário {item.usuarioId}
+          <View style={styles.topRow}>
+            <View style={[styles.chip, { backgroundColor: colors.primarySoft }]}>
+              <Text style={[styles.chipText, { color: colors.primary }]}>
+                {role.tipo || 'Rolê'}
+              </Text>
+            </View>
+
+            <View
+              style={[
+                styles.statusBadge,
+                {
+                  backgroundColor: isActive ? colors.primarySoft : colors.border,
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.status,
+                  { color: isActive ? colors.primary : colors.textMuted },
+                ]}
+              >
+                {role.status || 'Pendente'}
+              </Text>
+            </View>
+          </View>
+
+          <Text style={[styles.title, { color: colors.text }]}>
+            {role.nome}
           </Text>
-          <Text style={[styles.postContent, { color: colors.text }]}>
-            {item.conteudo}
-          </Text>
-          <Text style={[styles.postMeta, { color: colors.textMuted }]}>
-            Publicação #{item.id}
+
+          <Text style={[styles.description, { color: colors.textMuted }]}>
+            {role.descricao ||
+              'Confira abaixo as informações principais deste evento.'}
           </Text>
         </View>
-      ))
-    ) : (
-      <Text style={{ color: colors.textMuted }}>
-        Ainda não há publicações para este rolê.
-      </Text>
-    )}
-  </View>
-</View>
 
-        <TouchableOpacity style={[styles.button, { backgroundColor: colors.primary }]} onPress={() => router.push({ pathname: '/apex-presencas/[roleId]' as any, params: { roleId: role.id } })}>
-          <Text style={styles.buttonText}>Gerenciar confirmações</Text>
-        </TouchableOpacity>
+        <View style={styles.actionsRow}>
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() =>
+              router.push({
+                pathname: '/editar-role/[id]' as any,
+                params: { id: role.id },
+              })
+            }
+            style={[
+              styles.actionButton,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+              },
+            ]}
+          >
+            <Text style={styles.actionIcon}>✏️</Text>
+            <Text style={[styles.actionText, { color: colors.text }]}>
+              Editar
+            </Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity style={[styles.deleteButton, { backgroundColor: colors.danger }]} onPress={handleDelete}>
-          <Text style={styles.buttonText}>{deleteMutation.isPending ? 'Excluindo...' : 'Excluir rolê'}</Text>
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() =>
+              router.push({
+                pathname: '/apex-presencas/[roleId]' as any,
+                params: { roleId: role.id },
+              })
+            }
+            style={[
+              styles.actionButton,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+              },
+            ]}
+          >
+            <Text style={styles.actionIcon}>👥</Text>
+            <Text style={[styles.actionText, { color: colors.text }]}>
+              Presenças
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <View
+          style={[
+            styles.infoCard,
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
+            },
+          ]}
+        >
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            Informações do evento
+          </Text>
+
+          <View style={styles.infoList}>
+            <InfoRow icon="📍" label="Endereço" value={role.endereco} />
+            <InfoRow icon="🚇" label="Transporte" value={role.transporte} />
+            <InfoRow icon="⏱️" label="Tempo estimado" value={role.eta} />
+
+            {role.dataEvento ? (
+              <InfoRow icon="🗓️" label="Data" value={role.dataEvento} />
+            ) : null}
+
+            {typeof role.capacidadeMaxima === 'number' ? (
+              <InfoRow
+                icon="👥"
+                label="Capacidade"
+                value={`${role.capacidadeMaxima} pessoas`}
+              />
+            ) : null}
+          </View>
+        </View>
+
+        <View
+          style={[
+            styles.infoCard,
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
+            },
+          ]}
+        >
+          <View style={styles.sectionTop}>
+            <View>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                Feed do rolê
+              </Text>
+              <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>
+                Publique atualizações para este evento
+              </Text>
+            </View>
+          </View>
+
+          <AppInput
+            label="Nova atualização"
+            value={novoPost}
+            onChangeText={setNovoPost}
+            placeholder="Ex.: Galera, chego em 15 minutos"
+            multiline
+          />
+
+          <TouchableOpacity
+            activeOpacity={0.85}
+            disabled={createPostMutation.isPending}
+            style={[
+              styles.primaryButton,
+              {
+                backgroundColor: createPostMutation.isPending
+                  ? colors.textMuted
+                  : colors.primary,
+              },
+            ]}
+            onPress={handleCreatePost}
+          >
+            <Text style={styles.primaryButtonText}>
+              {createPostMutation.isPending
+                ? 'Publicando...'
+                : 'Publicar atualização'}
+            </Text>
+          </TouchableOpacity>
+
+          <View style={styles.postsList}>
+            {postsQuery.isLoading ? (
+              <LoadingState label="Carregando publicações" />
+            ) : postsQuery.data && postsQuery.data.length > 0 ? (
+              postsQuery.data.map((item: Post) => (
+                <View
+                  key={item.id}
+                  style={[
+                    styles.postCard,
+                    {
+                      backgroundColor: colors.background,
+                      borderColor: colors.border,
+                    },
+                  ]}
+                >
+                  <View style={styles.postTop}>
+                    <View
+                      style={[
+                        styles.avatar,
+                        { backgroundColor: colors.primarySoft },
+                      ]}
+                    >
+                      <Text style={[styles.avatarText, { color: colors.primary }]}>
+                        {(item.autorNome || 'U').charAt(0).toUpperCase()}
+                      </Text>
+                    </View>
+
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.postAuthor, { color: colors.text }]}>
+                        {item.autorNome || `Usuário ${item.usuarioId}`}
+                      </Text>
+
+                      <Text style={[styles.postMeta, { color: colors.textMuted }]}>
+                        {item.dataPostagem
+                          ? new Date(item.dataPostagem).toLocaleString('pt-BR')
+                          : `Publicação #${item.id}`}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <Text style={[styles.postContent, { color: colors.text }]}>
+                    {item.conteudo}
+                  </Text>
+                </View>
+              ))
+            ) : (
+              <View style={styles.emptyFeed}>
+                <Text style={styles.emptyIcon}>💬</Text>
+                <Text style={[styles.emptyTitle, { color: colors.text }]}>
+                  Nenhuma publicação ainda
+                </Text>
+                <Text style={[styles.emptyText, { color: colors.textMuted }]}>
+                  Use o feed para avisos, combinações e atualizações do rolê.
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
+
+        <TouchableOpacity
+          activeOpacity={0.85}
+          style={[styles.deleteButton, { backgroundColor: colors.danger }]}
+          onPress={handleDelete}
+          disabled={deleteMutation.isPending}
+        >
+          <Text style={styles.primaryButtonText}>
+            {deleteMutation.isPending ? 'Excluindo...' : 'Excluir rolê'}
+          </Text>
         </TouchableOpacity>
       </ScrollView>
     </AppContainer>
   );
 }
 
+function InfoRow({
+  icon,
+  label,
+  value,
+}: {
+  icon: string;
+  label: string;
+  value?: string;
+}) {
+  const { colors } = useAppTheme();
+
+  return (
+    <View style={[styles.infoRow, { borderColor: colors.border }]}>
+      <Text style={styles.infoIcon}>{icon}</Text>
+
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.infoLabel, { color: colors.textMuted }]}>
+          {label}
+        </Text>
+        <Text style={[styles.infoValue, { color: colors.text }]}>
+          {value || 'Não informado'}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  container: { padding: 24, 
-               gap: 14 },
+  container: {
+    padding: 20,
+    gap: 16,
+    paddingBottom: 120,
+  },
 
-  heroCard: { borderWidth: 1, 
-              borderRadius: 26, 
-              padding: 22, 
-              gap: 10 },
+  heroCard: {
+    borderWidth: 1,
+    borderRadius: 28,
+    padding: 20,
+    gap: 14,
+  },
 
-  topRow: { flexDirection: 'row', 
-            justifyContent: 'space-between', 
-            alignItems: 'center' },
+  topRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
 
-  chip: { paddingHorizontal: 12, 
-          paddingVertical: 8, 
-          borderRadius: 999 },
+  chip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+  },
 
-  chipText: { fontWeight: '800', 
-              fontSize: 12 },
+  chipText: {
+    fontWeight: '900',
+    fontSize: 12,
+  },
 
-  status: { fontWeight: '800', 
-            fontSize: 12 },
+  statusBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+  },
 
-  title: { fontSize: 28, 
-           fontWeight: '900' },
+  status: {
+    fontWeight: '900',
+    fontSize: 12,
+  },
 
-  description: { lineHeight: 22, 
-                 fontSize: 15 },
+  title: {
+    fontSize: 28,
+    fontWeight: '900',
+    lineHeight: 34,
+  },
 
-  infoCard: { borderWidth: 1, 
-              borderRadius: 22, 
-              padding: 18 },
+  description: {
+    lineHeight: 22,
+    fontSize: 15,
+  },
 
-  sectionTitle: { fontSize: 16, 
-                  fontWeight: '800', 
-                  marginBottom: 10 },
+  actionsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
 
-  row: { marginTop: 8, 
-         fontSize: 15 },
+  actionButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 22,
+    padding: 16,
+    alignItems: 'center',
+    gap: 6,
+  },
 
-  button: { borderRadius: 16, 
-            paddingVertical: 16, 
-            alignItems: 'center' },
+  actionIcon: {
+    fontSize: 22,
+  },
 
-  deleteButton: { borderRadius: 16, 
-                  paddingVertical: 16, 
-                  alignItems: 'center' },
+  actionText: {
+    fontSize: 13,
+    fontWeight: '900',
+  },
 
-  buttonText: { color: '#fff', 
-                fontWeight: '900', 
-                fontSize: 16 },
+  infoCard: {
+    borderWidth: 1,
+    borderRadius: 24,
+    padding: 18,
+    gap: 14,
+  },
 
-  postCard: { borderWidth: 1,
-              borderRadius: 16,
-              padding: 12,
-              gap: 4,
-              marginTop: 4, },
+  sectionTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
 
-postAuthor: { fontWeight: '800',
-              fontSize: 14, },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+  },
 
-postContent: { fontSize: 14,
-               lineHeight: 20, },
+  sectionSubtitle: {
+    fontSize: 13,
+    marginTop: 3,
+  },
 
-postMeta: { fontSize: 12,},
+  infoList: {
+    gap: 10,
+  },
 
-commentCard: {
-  borderWidth: 1,
-  borderRadius: 14,
-  padding: 12,
-  gap: 4, },
+  infoRow: {
+    borderWidth: 1,
+    borderRadius: 18,
+    padding: 14,
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'center',
+  },
 
-commentAuthor: {
-  fontWeight: '800',
-  fontSize: 13, },
+  infoIcon: {
+    fontSize: 22,
+  },
 
-commentContent: {
-  fontSize: 14,
-  lineHeight: 20, },
+  infoLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
 
-commentMeta: {
-  fontSize: 12, },
+  infoValue: {
+    fontSize: 15,
+    fontWeight: '800',
+  },
 
-commentToggle: {
-  borderWidth: 1,
-  borderRadius: 12,
-  paddingVertical: 10,
-  alignItems: 'center',
-  marginTop: 8, },
+  primaryButton: {
+    borderRadius: 18,
+    paddingVertical: 15,
+    alignItems: 'center',
+  },
 
-commentToggleText: {
-  fontWeight: '800', },
+  primaryButtonText: {
+    color: '#fff',
+    fontWeight: '900',
+    fontSize: 15,
+  },
 
+  postsList: {
+    gap: 10,
+  },
+
+  postCard: {
+    borderWidth: 1,
+    borderRadius: 20,
+    padding: 14,
+    gap: 10,
+  },
+
+  postTop: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'center',
+  },
+
+  avatar: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  avatarText: {
+    fontWeight: '900',
+  },
+
+  postAuthor: {
+    fontWeight: '900',
+    fontSize: 14,
+  },
+
+  postContent: {
+    fontSize: 14,
+    lineHeight: 21,
+  },
+
+  postMeta: {
+    fontSize: 12,
+  },
+
+  emptyFeed: {
+    alignItems: 'center',
+    paddingVertical: 18,
+    gap: 8,
+  },
+
+  emptyIcon: {
+    fontSize: 32,
+  },
+
+  emptyTitle: {
+    fontSize: 17,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+
+  emptyText: {
+    textAlign: 'center',
+    fontSize: 13,
+    lineHeight: 19,
+  },
+
+  deleteButton: {
+    borderRadius: 18,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
 });
