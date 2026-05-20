@@ -45,7 +45,10 @@ function mapComment(item: BackendComment): Comment {
 
 export const feedService = {
   async listPostsByRole(roleId: string) {
-    const { data } = await backendHttp.get<BackendPost[]>(`/feed/roles/${roleId}/publicacoes`);
+    const { data } = await backendHttp.get<BackendPost[]>(
+      `/feed/roles/${roleId}/publicacoes`
+    );
+
     return data.map(mapPost);
   },
 
@@ -55,6 +58,7 @@ export const feedService = {
       conteudo: payload.conteudo,
       imagem: payload.imagem ?? null,
     });
+
     return mapPost(data);
   },
 
@@ -62,6 +66,7 @@ export const feedService = {
     const { data } = await backendHttp.get<BackendComment[]>(
       `/feed/publicacoes/${publicacaoId}/comentarios`
     );
+
     return data.map(mapComment);
   },
 
@@ -70,6 +75,7 @@ export const feedService = {
       `/feed/publicacoes/${publicacaoId}/comentarios`,
       { conteudo }
     );
+
     return mapComment(data);
   },
 };
