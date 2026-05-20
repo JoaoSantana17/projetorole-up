@@ -1,13 +1,51 @@
 import { AppContainer } from '@/components/AppContainer';
 import { AppHeader } from '@/components/AppHeader';
+import { AppInput } from '@/components/AppInput';
 import { FeedbackState } from '@/components/FeedbackState';
-import InputField from '@/components/InputField';
 import { LoadingState } from '@/components/LoadingState';
 import { useAppTheme } from '@/src/contexts/ThemeContext';
-import { useProfileQuery, useUpdateProfileMutation } from '@/src/hooks/queries/useProfile';
+import {
+  useProfileQuery,
+  useUpdateProfileMutation,
+} from '@/src/hooks/queries/useProfile';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+
+type PrivacyOption = 'público' | 'amigos' | 'privado';
+
+const privacyOptions: {
+  value: PrivacyOption;
+  title: string;
+  description: string;
+  icon: string;
+}[] = [
+  {
+    value: 'público',
+    title: 'Público',
+    description: 'Todos podem ver seu perfil.',
+    icon: '🌎',
+  },
+  {
+    value: 'amigos',
+    title: 'Amigos',
+    description: 'Apenas amigos veem seus dados.',
+    icon: '👥',
+  },
+  {
+    value: 'privado',
+    title: 'Privado',
+    description: 'Seu perfil fica mais restrito.',
+    icon: '🔒',
+  },
+];
 
 export default function EditarPerfilScreen() {
   const router = useRouter();
@@ -20,7 +58,7 @@ export default function EditarPerfilScreen() {
   const [email, setEmail] = useState('');
   const [telefone, setTelefone] = useState('');
   const [dataNascimento, setDataNascimento] = useState('');
-  const [privacidade, setPrivacidade] = useState<'público' | 'amigos' | 'privado'>('público');
+  const [privacidade, setPrivacidade] = useState<PrivacyOption>('público');
 
   useEffect(() => {
     if (profileQuery.data) {
@@ -28,14 +66,12 @@ export default function EditarPerfilScreen() {
       setEmail(profileQuery.data.email ?? '');
       setTelefone(profileQuery.data.telefone ?? '');
       setDataNascimento(profileQuery.data.dataNascimento ?? '');
-      setPrivacidade(
-        (profileQuery.data.privacidade as 'público' | 'amigos' | 'privado') ?? 'público'
-      );
+      setPrivacidade((profileQuery.data.privacidade as PrivacyOption) ?? 'público');
     }
   }, [profileQuery.data]);
 
   async function handleSave() {
-    if (!nome || !email) {
+    if (!nome.trim() || !email.trim()) {
       Alert.alert('Atenção', 'Nome e e-mail são obrigatórios.');
       return;
     }
@@ -55,7 +91,11 @@ export default function EditarPerfilScreen() {
       Alert.alert(
         'Erro',
         error?.response?.data?.message ??
-          JSON.stringify(error?.response?.data || error?.message || 'Não foi possível salvar o perfil.')
+          JSON.stringify(
+            error?.response?.data ||
+              error?.message ||
+              'Não foi possível salvar o perfil.'
+          )
       );
     }
   }
@@ -84,7 +124,10 @@ export default function EditarPerfilScreen() {
     <AppContainer>
       <AppHeader title="Editar perfil" back />
 
-      <ScrollView contentContainerStyle={styles.container}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.container}
+      >
         <View
           style={[
             styles.heroCard,
@@ -94,11 +137,29 @@ export default function EditarPerfilScreen() {
             },
           ]}
         >
-          <Text style={[styles.title, { color: colors.text }]}>
-            Atualize seus dados
-          </Text>
+          <View style={styles.heroTop}>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.eyebrow, { color: colors.primary }]}>
+                CONFIGURAÇÕES
+              </Text>
+
+              <Text style={[styles.title, { color: colors.text }]}>
+                Atualize seu perfil no Rolé App
+              </Text>
+            </View>
+
+            <View
+              style={[
+                styles.heroIconBox,
+                { backgroundColor: colors.primarySoft },
+              ]}
+            >
+              <Text style={styles.heroIcon}>👤</Text>
+            </View>
+          </View>
+
           <Text style={[styles.subtitle, { color: colors.textMuted }]}>
-            As alterações serão salvas no backend e permanecerão no app.
+            Essas informações ajudam a identificar sua conta dentro do app.
           </Text>
         </View>
 
@@ -111,14 +172,18 @@ export default function EditarPerfilScreen() {
             },
           ]}
         >
-          <InputField
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            Dados pessoais
+          </Text>
+
+          <AppInput
             label="Nome"
             value={nome}
             onChangeText={setNome}
             placeholder="Seu nome"
           />
 
-          <InputField
+          <AppInput
             label="E-mail"
             value={email}
             onChangeText={setEmail}
@@ -127,7 +192,7 @@ export default function EditarPerfilScreen() {
             placeholder="voce@email.com"
           />
 
-          <InputField
+          <AppInput
             label="Telefone"
             value={telefone}
             onChangeText={setTelefone}
@@ -135,56 +200,106 @@ export default function EditarPerfilScreen() {
             placeholder="(11) 99999-9999"
           />
 
-          <InputField
+          <AppInput
             label="Data de nascimento"
             value={dataNascimento}
             onChangeText={setDataNascimento}
             placeholder="YYYY-MM-DD"
           />
+        </View>
 
-          <View style={styles.privacySection}>
-            <Text style={[styles.privacyLabel, { color: colors.text }]}>
-              Privacidade
-            </Text>
+        <View
+          style={[
+            styles.formCard,
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
+            },
+          ]}
+        >
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            Privacidade
+          </Text>
 
-            <View style={styles.privacyOptions}>
-              {(['público', 'amigos', 'privado'] as const).map((option) => {
-                const selected = privacidade === option;
+          <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>
+            Escolha como seu perfil aparece para outros usuários.
+          </Text>
 
-                return (
-                  <TouchableOpacity
-                    key={option}
-                    onPress={() => setPrivacidade(option)}
-                    style={[
-                      styles.privacyButton,
-                      {
-                        backgroundColor: selected ? colors.primarySoft : colors.background,
-                        borderColor: selected ? colors.primary : colors.border,
-                      },
-                    ]}
-                  >
+          <View style={styles.privacyOptions}>
+            {privacyOptions.map((option) => {
+              const selected = privacidade === option.value;
+
+              return (
+                <TouchableOpacity
+                  key={option.value}
+                  activeOpacity={0.85}
+                  onPress={() => setPrivacidade(option.value)}
+                  style={[
+                    styles.privacyCard,
+                    {
+                      backgroundColor: selected
+                        ? colors.primarySoft
+                        : colors.background,
+                      borderColor: selected ? colors.primary : colors.border,
+                    },
+                  ]}
+                >
+                  <Text style={styles.privacyIcon}>{option.icon}</Text>
+
+                  <View style={{ flex: 1 }}>
                     <Text
                       style={[
-                        styles.privacyButtonText,
+                        styles.privacyTitle,
                         { color: selected ? colors.primary : colors.text },
                       ]}
                     >
-                      {option}
+                      {option.title}
                     </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+
+                    <Text
+                      style={[
+                        styles.privacyDescription,
+                        { color: colors.textMuted },
+                      ]}
+                    >
+                      {option.description}
+                    </Text>
+                  </View>
+
+                  <View
+                    style={[
+                      styles.radio,
+                      {
+                        borderColor: selected ? colors.primary : colors.border,
+                        backgroundColor: selected
+                          ? colors.primary
+                          : 'transparent',
+                      },
+                    ]}
+                  />
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
 
         <TouchableOpacity
-          style={[styles.saveButton, { backgroundColor: colors.primary }]}
+          activeOpacity={0.85}
+          style={[
+            styles.saveButton,
+            {
+              backgroundColor: updateProfileMutation.isPending
+                ? colors.textMuted
+                : colors.primary,
+            },
+          ]}
           onPress={handleSave}
           disabled={updateProfileMutation.isPending}
         >
           <Text style={styles.saveButtonText}>
-            {updateProfileMutation.isPending ? 'Salvando...' : 'Salvar alterações'}
+            {updateProfileMutation.isPending
+              ? 'Salvando...'
+              : 'Salvar alterações'}
           </Text>
         </TouchableOpacity>
       </ScrollView>
@@ -194,21 +309,35 @@ export default function EditarPerfilScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    padding: 24,
+    padding: 20,
     gap: 16,
     paddingBottom: 120,
   },
 
   heroCard: {
     borderWidth: 1,
-    borderRadius: 24,
+    borderRadius: 28,
     padding: 20,
-    gap: 8,
+    gap: 14,
+  },
+
+  heroTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 14,
+  },
+
+  eyebrow: {
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 1,
+    marginBottom: 6,
   },
 
   title: {
     fontSize: 24,
     fontWeight: '900',
+    lineHeight: 31,
   },
 
   subtitle: {
@@ -216,44 +345,72 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
 
+  heroIconBox: {
+    width: 54,
+    height: 54,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  heroIcon: {
+    fontSize: 27,
+  },
+
   formCard: {
     borderWidth: 1,
-    borderRadius: 22,
-    padding: 18,
-    gap: 14,
+    borderRadius: 24,
+    padding: 16,
+    gap: 12,
   },
 
-  privacySection: {
-    gap: 10,
-    marginTop: 4,
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '900',
   },
 
-  privacyLabel: {
-    fontSize: 15,
-    fontWeight: '800',
+  sectionSubtitle: {
+    fontSize: 13,
+    lineHeight: 19,
   },
 
   privacyOptions: {
-    flexDirection: 'row',
     gap: 10,
-    flexWrap: 'wrap',
   },
 
-  privacyButton: {
+  privacyCard: {
     borderWidth: 1,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    borderRadius: 20,
+    padding: 14,
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'center',
   },
 
-  privacyButtonText: {
-    fontSize: 13,
-    fontWeight: '800',
-    textTransform: 'capitalize',
+  privacyIcon: {
+    fontSize: 24,
+  },
+
+  privacyTitle: {
+    fontSize: 15,
+    fontWeight: '900',
+  },
+
+  privacyDescription: {
+    fontSize: 12,
+    marginTop: 2,
+    lineHeight: 17,
+  },
+
+  radio: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 2,
   },
 
   saveButton: {
-    borderRadius: 16,
+    borderRadius: 18,
     paddingVertical: 16,
     alignItems: 'center',
   },
