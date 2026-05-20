@@ -198,7 +198,7 @@ O projeto foi desenvolvido com foco em:
 
 ### Sobre o App
 <p align="center">
-  <img src="assets/screenshots/sobreb.jpeg" width="250" />
+  <img src="assets/screenshots/sobre.jpeg" width="250" />
 </p>
 
 ---
