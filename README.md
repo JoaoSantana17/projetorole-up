@@ -145,6 +145,23 @@ O projeto foi desenvolvido com foco em:
 
 ---
 
+### Notificações | Com/Clean
+<p align="center">
+  <img src="assets/screenshots/not.jpeg" width="250" />
+</p>
+<p align="center">
+  <img src="assets/screenshots/notclean.jpeg" width="250" />
+</p>
+
+---
+
+### Criar Rolê
+<p align="center">
+  <img src="assets/screenshots/criar-role.jpeg" width="250" />
+</p>
+
+---
+
 ### Detalhes do Rolê
 <p align="center">
   <img src="assets/screenshots/detalhes.jpeg" width="250" />
@@ -163,12 +180,25 @@ O projeto foi desenvolvido com foco em:
 <p align="center">
   <img src="assets/screenshots/amizades.jpeg" width="250" />
 </p>
+<p align="center">
+  <img src="assets/screenshots/amizades2.jpeg" width="250" />
+</p>
 
 ---
 
 ### Perfil
 <p align="center">
   <img src="assets/screenshots/perfil.jpeg" width="250" />
+</p>
+<p align="center">
+  <img src="assets/screenshots/perfil2.jpeg" width="250" />
+</p>
+
+---
+
+### Sobre o App
+<p align="center">
+  <img src="assets/screenshots/sobreb.jpeg" width="250" />
 </p>
 
 ---
@@ -200,6 +230,23 @@ O projeto foi desenvolvido com foco em:
 
 ---
 
+### Notificações | Com/Clean
+<p align="center">
+  <img src="assets/screenshots/notb.jpeg" width="250" />
+</p>
+<p align="center">
+  <img src="assets/screenshots/notcleanb.jpeg" width="250" />
+</p>
+
+---
+
+### Criar Rolê
+<p align="center">
+  <img src="assets/screenshots/criar-roleb.jpeg" width="250" />
+</p>
+
+---
+
 ### Detalhes do Rolê
 <p align="center">
   <img src="assets/screenshots/detalhesb.jpeg" width="250" />
@@ -218,10 +265,30 @@ O projeto foi desenvolvido com foco em:
 <p align="center">
   <img src="assets/screenshots/amizadesb.jpeg" width="250" />
 </p>
+<p align="center">
+  <img src="assets/screenshots/amizadesb2.jpeg" width="250" />
+</p>
 
 ---
 
 ### Perfil
 <p align="center">
   <img src="assets/screenshots/perfilb.jpeg" width="250" />
+</p>
+<p align="center">
+  <img src="assets/screenshots/perfilb2.jpeg" width="250" />
+</p>
+
+---
+
+### Sobre o App
+<p align="center">
+  <img src="assets/screenshots/sobreb.jpeg" width="250" />
+</p>
+
+---
+
+### Editar Perfil
+<p align="center">
+  <img src="assets/screenshots/editar-perfilb.jpeg" width="250" />
 </p>
