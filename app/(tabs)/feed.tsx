@@ -2,59 +2,44 @@ import { AppContainer } from '@/components/AppContainer';
 import { AppHeader } from '@/components/AppHeader';
 import { AppInput } from '@/components/AppInput';
 import { useAppTheme } from '@/src/contexts/ThemeContext';
+import { useRolesQuery } from '@/src/hooks/queries/useRoles';
 import { feedService } from '@/src/services/feed.service';
-import { rolesService } from '@/src/services/roles.service';
-import { Comment, Post, Role } from '@/src/types';
+import { Post, Role } from '@/src/types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   FlatList,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
 
+const randomLikes = [12, 8, 21, 5, 34, 18, 27];
+const randomComments = [2, 4, 1, 7, 3, 6];
+
 export default function FeedScreen() {
   const { colors } = useAppTheme();
   const queryClient = useQueryClient();
 
-  const [roleSearch, setRoleSearch] = useState('');
+  const [content, setContent] = useState('');
   const [selectedRoleId, setSelectedRoleId] = useState<string>('');
-  const [conteudo, setConteudo] = useState('');
-  const [comentariosAbertos, setComentariosAbertos] = useState<Record<string, boolean>>({});
-  const [novoComentario, setNovoComentario] = useState<Record<string, string>>({});
 
-  const rolesQuery = useQuery({
-    queryKey: ['roles'],
-    queryFn: rolesService.list,
-  });
+  const rolesQuery = useRolesQuery();
+  const roles = rolesQuery.data ?? [];
 
-  const filteredRoles = useMemo(() => {
-    const roles = rolesQuery.data ?? [];
-    const term = roleSearch.trim().toLowerCase();
-
-    if (!term) {
-      return roles.slice(0, 6);
+  useEffect(() => {
+    if (!selectedRoleId && roles.length > 0) {
+      setSelectedRoleId(roles[0].id);
     }
+  }, [roles, selectedRoleId]);
 
-    return roles.filter((role: Role) => {
-      const nome = role.nome?.toLowerCase() ?? '';
-      const tipo = role.tipo?.toLowerCase() ?? '';
-      const endereco = role.endereco?.toLowerCase() ?? '';
-      return nome.includes(term) || tipo.includes(term) || endereco.includes(term);
-    });
-  }, [rolesQuery.data, roleSearch]);
-
-  const selectedRole = useMemo(() => {
-    return (rolesQuery.data ?? []).find((role: Role) => role.id === selectedRoleId);
-  }, [rolesQuery.data, selectedRoleId]);
+  const selectedRole = roles.find((role: Role) => role.id === selectedRoleId);
 
   const postsQuery = useQuery({
-    queryKey: ['feed-posts', selectedRoleId],
+    queryKey: ['feed-by-role', selectedRoleId],
     queryFn: () => feedService.listPostsByRole(selectedRoleId),
     enabled: !!selectedRoleId,
   });
@@ -63,121 +48,50 @@ export default function FeedScreen() {
     mutationFn: () =>
       feedService.createPost({
         roleId: selectedRoleId,
-        conteudo,
+        conteudo: content,
       }),
     onSuccess: () => {
-      setConteudo('');
-      queryClient.invalidateQueries({ queryKey: ['feed-posts', selectedRoleId] });
-      Alert.alert('Sucesso', 'Publicação criada.');
+      setContent('');
+      queryClient.invalidateQueries({ queryKey: ['feed-by-role', selectedRoleId] });
+      Alert.alert('Sucesso', 'Post publicado no feed.');
     },
     onError: (error: any) => {
       Alert.alert(
         'Erro',
-        JSON.stringify(error?.response?.data || error?.message || 'Não foi possível publicar.')
+        error?.response?.data?.message ?? 'Não foi possível publicar.'
       );
     },
   });
 
-  const createCommentMutation = useMutation({
-    mutationFn: ({ publicacaoId, conteudo }: { publicacaoId: string; conteudo: string }) =>
-      feedService.createComment(publicacaoId, conteudo),
-    onSuccess: (_, variables) => {
-      setNovoComentario((prev) => ({ ...prev, [variables.publicacaoId]: '' }));
-      queryClient.invalidateQueries({ queryKey: ['feed-comments', variables.publicacaoId] });
-    },
-    onError: (error: any) => {
-      Alert.alert(
-        'Erro',
-        JSON.stringify(error?.response?.data || error?.message || 'Não foi possível comentar.')
-      );
-    },
-  });
+  const posts: Post[] = postsQuery.data ?? [];
 
-  function formatDate(value?: string) {
-    if (!value) return 'Agora há pouco';
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return value;
-    return date.toLocaleString('pt-BR');
+  const stats = useMemo(() => {
+    return {
+      totalPosts: posts.length,
+      totalLikes: posts.length * 12,
+      activeUsers: posts.length + 3,
+    };
+  }, [posts]);
+
+  function handleCreatePost() {
+    if (!selectedRoleId) {
+      Alert.alert('Atenção', 'Selecione um rolê para publicar.');
+      return;
+    }
+
+    if (!content.trim()) {
+      Alert.alert('Atenção', 'Digite algo para publicar.');
+      return;
+    }
+
+    createMutation.mutate();
   }
 
-  function CommentsBlock({ publicacaoId }: { publicacaoId: string }) {
-    const { data: comments, isLoading: loadingComments } = useQuery({
-      queryKey: ['feed-comments', publicacaoId],
-      queryFn: () => feedService.listComments(publicacaoId),
-      enabled: !!comentariosAbertos[publicacaoId],
-    });
+  function renderPost({ item, index }: { item: Post; index: number }) {
+    const likes = randomLikes[index % randomLikes.length];
+    const comments = randomComments[index % randomComments.length];
 
-    return (
-      <View style={styles.commentsWrapper}>
-        {loadingComments ? (
-          <ActivityIndicator color={colors.primary} />
-        ) : (
-          <>
-            {(comments ?? []).length > 0 ? (
-              (comments ?? []).map((comment: Comment) => (
-                <View
-                  key={comment.id}
-                  style={[
-                    styles.commentCard,
-                    {
-                      borderColor: colors.border,
-                      backgroundColor: colors.background,
-                    },
-                  ]}
-                >
-                  <View style={styles.commentHeader}>
-                    <Text style={[styles.commentAuthor, { color: colors.text }]}>
-                      {comment.autorNome ?? `Usuário ${comment.usuarioId}`}
-                    </Text>
-                    <Text style={[styles.commentDate, { color: colors.textMuted }]}>
-                      {formatDate(comment.dataComentario)}
-                    </Text>
-                  </View>
-
-                  <Text style={[styles.commentContent, { color: colors.textMuted }]}>
-                    {comment.conteudo}
-                  </Text>
-                </View>
-              ))
-            ) : (
-              <Text style={{ color: colors.textMuted }}>
-                Ainda não há comentários nesta publicação.
-              </Text>
-            )}
-
-            <AppInput
-              label="Novo comentário"
-              value={novoComentario[publicacaoId] ?? ''}
-              onChangeText={(text) =>
-                setNovoComentario((prev) => ({ ...prev, [publicacaoId]: text }))
-              }
-              placeholder="Escreva um comentário"
-            />
-
-            <TouchableOpacity
-              style={[styles.commentButton, { backgroundColor: colors.primary }]}
-              onPress={() => {
-                const texto = (novoComentario[publicacaoId] ?? '').trim();
-                if (!texto) {
-                  Alert.alert('Atenção', 'Digite um comentário.');
-                  return;
-                }
-                createCommentMutation.mutate({ publicacaoId, conteudo: texto });
-              }}
-            >
-              <Text style={styles.buttonText}>
-                {createCommentMutation.isPending ? 'Comentando...' : 'Comentar'}
-              </Text>
-            </TouchableOpacity>
-          </>
-        )}
-      </View>
-    );
-  }
-
-  function renderPost({ item }: { item: Post }) {
-    const aberto = !!comentariosAbertos[item.id];
-    const roleName = selectedRole?.nome ?? `Rolê #${item.roleId}`;
+    const authorName = item.autorNome || `Usuário ${item.usuarioId || item.roleId}`;
 
     return (
       <View
@@ -189,51 +103,68 @@ export default function FeedScreen() {
           },
         ]}
       >
-        <View style={styles.postTopRow}>
-          <View style={[styles.roleBadge, { backgroundColor: colors.primarySoft }]}>
-            <Text style={[styles.roleBadgeText, { color: colors.primary }]}>
-              {selectedRole?.tipo ?? 'rolê'}
-            </Text>
+        <View style={styles.postHeader}>
+          <View style={styles.authorRow}>
+            <View
+              style={[
+                styles.avatar,
+                {
+                  backgroundColor: colors.primarySoft,
+                  borderColor: colors.border,
+                },
+              ]}
+            >
+              <Text style={[styles.avatarText, { color: colors.primary }]}>
+                {authorName.charAt(0).toUpperCase()}
+              </Text>
+            </View>
+
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.authorName, { color: colors.text }]}>
+                {authorName}
+              </Text>
+
+              <Text style={[styles.postMeta, { color: colors.textMuted }]}>
+                {item.dataPostagem
+                  ? new Date(item.dataPostagem).toLocaleString('pt-BR')
+                  : `Post #${item.id}`}
+              </Text>
+            </View>
           </View>
 
-          <Text style={[styles.postDate, { color: colors.textMuted }]}>
-            {formatDate(item.dataPostagem)}
-          </Text>
+          <View style={[styles.roleBadge, { backgroundColor: colors.primarySoft }]}>
+            <Text style={[styles.roleBadgeText, { color: colors.primary }]}>
+              Rolê #{item.roleId}
+            </Text>
+          </View>
         </View>
-
-        <Text style={[styles.postRoleName, { color: colors.text }]}>
-          {roleName}
-        </Text>
-
-        <Text style={[styles.postAuthor, { color: colors.textMuted }]}>
-          por {item.autorNome ?? `Usuário ${item.usuarioId}`}
-        </Text>
 
         <Text style={[styles.postContent, { color: colors.text }]}>
           {item.conteudo}
         </Text>
 
-        <TouchableOpacity
-          style={[
-            styles.toggleButton,
-            {
-              borderColor: colors.border,
-              backgroundColor: colors.background,
-            },
-          ]}
-          onPress={() =>
-            setComentariosAbertos((prev) => ({
-              ...prev,
-              [item.id]: !prev[item.id],
-            }))
-          }
-        >
-          <Text style={[styles.toggleButtonText, { color: colors.text }]}>
-            {aberto ? 'Ocultar comentários' : 'Ver comentários'}
-          </Text>
-        </TouchableOpacity>
+        <View style={[styles.postFooter, { borderTopColor: colors.border }]}>
+          <View style={styles.footerItem}>
+            <Text style={styles.footerIcon}>❤️</Text>
+            <Text style={[styles.footerText, { color: colors.textMuted }]}>
+              {likes} curtidas
+            </Text>
+          </View>
 
-        {aberto && <CommentsBlock publicacaoId={item.id} />}
+          <View style={styles.footerItem}>
+            <Text style={styles.footerIcon}>💬</Text>
+            <Text style={[styles.footerText, { color: colors.textMuted }]}>
+              {comments} comentários
+            </Text>
+          </View>
+
+          <View style={styles.footerItem}>
+            <Text style={styles.footerIcon}>📌</Text>
+            <Text style={[styles.footerText, { color: colors.textMuted }]}>
+              Evento ativo
+            </Text>
+          </View>
+        </View>
       </View>
     );
   }
@@ -243,12 +174,13 @@ export default function FeedScreen() {
       <AppHeader title="Feed" />
 
       <FlatList
-        data={postsQuery.data ?? []}
+        data={posts}
         keyExtractor={(item) => item.id}
         renderItem={renderPost}
-        contentContainerStyle={{ padding: 20, gap: 16, paddingBottom: 120 }}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.container}
         ListHeaderComponent={
-          <View style={{ gap: 16 }}>
+          <View style={styles.headerContent}>
             <View
               style={[
                 styles.heroCard,
@@ -258,17 +190,82 @@ export default function FeedScreen() {
                 },
               ]}
             >
-              <Text style={[styles.heroTitle, { color: colors.text }]}>
-                Feed dos rolês
-              </Text>
+              <View style={styles.heroTop}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.eyebrow, { color: colors.primary }]}>
+                    FEED SOCIAL
+                  </Text>
+
+                  <Text style={[styles.heroTitle, { color: colors.text }]}>
+                    Compartilhe atualizações dos seus rolês
+                  </Text>
+                </View>
+
+                <View
+                  style={[
+                    styles.heroIconBox,
+                    { backgroundColor: colors.primarySoft },
+                  ]}
+                >
+                  <Text style={styles.heroIcon}>🔥</Text>
+                </View>
+              </View>
+
               <Text style={[styles.heroSubtitle, { color: colors.textMuted }]}>
-                Escolha um rolê pelo nome, acompanhe as atualizações e converse com os participantes.
+                Escolha um rolê, publique novidades e acompanhe as atualizações.
               </Text>
+            </View>
+
+            <View style={styles.statsRow}>
+              <View
+                style={[
+                  styles.statCard,
+                  { backgroundColor: colors.surface, borderColor: colors.border },
+                ]}
+              >
+                <Text style={styles.statIcon}>📝</Text>
+                <Text style={[styles.statValue, { color: colors.text }]}>
+                  {stats.totalPosts}
+                </Text>
+                <Text style={[styles.statLabel, { color: colors.textMuted }]}>
+                  Posts
+                </Text>
+              </View>
+
+              <View
+                style={[
+                  styles.statCard,
+                  { backgroundColor: colors.surface, borderColor: colors.border },
+                ]}
+              >
+                <Text style={styles.statIcon}>❤️</Text>
+                <Text style={[styles.statValue, { color: colors.text }]}>
+                  {stats.totalLikes}
+                </Text>
+                <Text style={[styles.statLabel, { color: colors.textMuted }]}>
+                  Curtidas
+                </Text>
+              </View>
+
+              <View
+                style={[
+                  styles.statCard,
+                  { backgroundColor: colors.surface, borderColor: colors.border },
+                ]}
+              >
+                <Text style={styles.statIcon}>🎉</Text>
+                <Text style={[styles.statValue, { color: colors.text }]}>
+                  {roles.length}
+                </Text>
+                <Text style={[styles.statLabel, { color: colors.textMuted }]}>
+                  Rolês
+                </Text>
+              </View>
             </View>
 
             <View
               style={[
-                styles.selectorCard,
+                styles.selectCard,
                 {
                   backgroundColor: colors.surface,
                   borderColor: colors.border,
@@ -276,63 +273,90 @@ export default function FeedScreen() {
               ]}
             >
               <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                Escolher rolê
+                Escolha o rolê
               </Text>
 
-              <AppInput
-                label="Buscar rolê pelo nome"
-                value={roleSearch}
-                onChangeText={setRoleSearch}
-                placeholder="Ex.: Resenha de amigos"
-              />
+              <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>
+                A publicação será vinculada ao evento selecionado.
+              </Text>
 
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.roleList}>
-                {rolesQuery.isLoading ? (
-                  <ActivityIndicator color={colors.primary} />
-                ) : filteredRoles.length > 0 ? (
-                  filteredRoles.map((role: Role) => {
-                    const selected = role.id === selectedRoleId;
+              {rolesQuery.isLoading ? (
+                <ActivityIndicator color={colors.primary} />
+              ) : roles.length > 0 ? (
+                <FlatList
+                  data={roles}
+                  keyExtractor={(item) => item.id}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.rolesList}
+                  renderItem={({ item }) => {
+                    const selected = item.id === selectedRoleId;
 
                     return (
                       <TouchableOpacity
-                        key={role.id}
+                        activeOpacity={0.85}
+                        onPress={() => setSelectedRoleId(item.id)}
                         style={[
                           styles.roleOption,
                           {
-                            backgroundColor: selected ? colors.primarySoft : colors.background,
+                            backgroundColor: selected
+                              ? colors.primary
+                              : colors.background,
                             borderColor: selected ? colors.primary : colors.border,
                           },
                         ]}
-                        onPress={() => {
-                          setSelectedRoleId(role.id);
-                          setRoleSearch(role.nome);
-                        }}
                       >
                         <Text
                           style={[
                             styles.roleOptionTitle,
-                            { color: selected ? colors.primary : colors.text },
+                            { color: selected ? '#fff' : colors.text },
                           ]}
                         >
-                          {role.nome}
+                          {item.nome}
                         </Text>
-                        <Text style={[styles.roleOptionMeta, { color: colors.textMuted }]}>
-                          {role.tipo} • {role.endereco}
+
+                        <Text
+                          style={[
+                            styles.roleOptionSubtitle,
+                            { color: selected ? '#fff' : colors.textMuted },
+                          ]}
+                        >
+                          {item.tipo || 'Rolê'}
                         </Text>
                       </TouchableOpacity>
                     );
-                  })
-                ) : (
-                  <Text style={{ color: colors.textMuted }}>
-                    Nenhum rolê encontrado.
+                  }}
+                />
+              ) : (
+                <Text style={[styles.emptyText, { color: colors.textMuted }]}>
+                  Nenhum rolê encontrado. Crie um rolê antes de publicar no feed.
+                </Text>
+              )}
+
+              {selectedRole && (
+                <View
+                  style={[
+                    styles.selectedRoleBox,
+                    {
+                      backgroundColor: colors.background,
+                      borderColor: colors.border,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.selectedRoleTitle, { color: colors.text }]}>
+                    Publicando em: {selectedRole.nome}
                   </Text>
-                )}
-              </ScrollView>
+
+                  <Text style={[styles.selectedRoleText, { color: colors.textMuted }]}>
+                    📍 {selectedRole.endereco || 'Endereço não informado'}
+                  </Text>
+                </View>
+              )}
             </View>
 
             <View
               style={[
-                styles.composeCard,
+                styles.createCard,
                 {
                   backgroundColor: colors.surface,
                   borderColor: colors.border,
@@ -343,48 +367,48 @@ export default function FeedScreen() {
                 Nova publicação
               </Text>
 
-              <Text style={{ color: colors.textMuted }}>
-                {selectedRole
-                  ? `Publicando em: ${selectedRole.nome}`
-                  : 'Selecione um rolê para publicar uma atualização.'}
+              <Text style={[styles.sectionSubtitle, { color: colors.textMuted }]}>
+                Compartilhe uma atualização com a galera.
               </Text>
 
               <AppInput
-                label="Atualização do rolê"
-                value={conteudo}
-                onChangeText={setConteudo}
-                placeholder="Compartilhe uma atualização do evento"
+                label="O que está acontecendo?"
+                value={content}
+                onChangeText={setContent}
+                multiline
+                placeholder="Ex.: Chego em 20 minutos no rolê"
               />
 
               <TouchableOpacity
-                style={[styles.publishButton, { backgroundColor: colors.primary }]}
-                onPress={() => {
-                  if (!selectedRoleId || !conteudo.trim()) {
-                    Alert.alert('Atenção', 'Selecione um rolê e escreva uma publicação.');
-                    return;
-                  }
-                  createMutation.mutate();
-                }}
+                activeOpacity={0.85}
+                disabled={createMutation.isPending || !selectedRoleId}
+                style={[
+                  styles.publishButton,
+                  {
+                    backgroundColor:
+                      createMutation.isPending || !selectedRoleId
+                        ? colors.textMuted
+                        : colors.primary,
+                  },
+                ]}
+                onPress={handleCreatePost}
               >
-                <Text style={styles.buttonText}>
-                  {createMutation.isPending ? 'Publicando...' : 'Publicar'}
+                <Text style={styles.publishButtonText}>
+                  {createMutation.isPending
+                    ? 'Publicando...'
+                    : 'Publicar no feed'}
                 </Text>
               </TouchableOpacity>
             </View>
 
-            <View style={styles.listHeader}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                Atualizações
+            <View style={styles.feedHeader}>
+              <Text style={[styles.feedTitle, { color: colors.text }]}>
+                Últimas atualizações
               </Text>
-              {selectedRole ? (
-                <Text style={{ color: colors.textMuted }}>
-                  Exibindo posts de {selectedRole.nome}
-                </Text>
-              ) : (
-                <Text style={{ color: colors.textMuted }}>
-                  Selecione um rolê para ver o feed relacionado
-                </Text>
-              )}
+
+              <Text style={[styles.feedSubtitle, { color: colors.textMuted }]}>
+                {posts.length} publicação(ões)
+              </Text>
             </View>
           </View>
         }
@@ -402,13 +426,14 @@ export default function FeedScreen() {
               <ActivityIndicator color={colors.primary} />
             ) : (
               <>
+                <Text style={styles.emptyIcon}>📭</Text>
+
                 <Text style={[styles.emptyTitle, { color: colors.text }]}>
-                  Nenhuma publicação ainda
+                  Nenhuma publicação neste rolê
                 </Text>
-                <Text style={{ color: colors.textMuted, textAlign: 'center' }}>
-                  {selectedRole
-                    ? `Ainda não há publicações para ${selectedRole.nome}.`
-                    : 'Selecione um rolê acima para visualizar ou criar publicações.'}
+
+                <Text style={[styles.emptyText, { color: colors.textMuted }]}>
+                  Selecione um rolê e publique a primeira atualização.
                 </Text>
               </>
             )}
@@ -420,16 +445,40 @@ export default function FeedScreen() {
 }
 
 const styles = StyleSheet.create({
+  container: {
+    padding: 20,
+    gap: 16,
+    paddingBottom: 120,
+  },
+
+  headerContent: {
+    gap: 16,
+  },
+
   heroCard: {
     borderWidth: 1,
-    borderRadius: 24,
+    borderRadius: 28,
     padding: 20,
-    gap: 8,
+    gap: 14,
+  },
+
+  heroTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 14,
+  },
+
+  eyebrow: {
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 1,
+    marginBottom: 6,
   },
 
   heroTitle: {
-    fontSize: 24,
+    fontSize: 25,
     fontWeight: '900',
+    lineHeight: 31,
   },
 
   heroSubtitle: {
@@ -437,16 +486,96 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
 
-  selectorCard: {
-    borderWidth: 1,
-    borderRadius: 22,
-    padding: 16,
-    gap: 14,
+  heroIconBox: {
+    width: 54,
+    height: 54,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
-  composeCard: {
+  heroIcon: {
+    fontSize: 27,
+  },
+
+  statsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+
+  statCard: {
+    flex: 1,
     borderWidth: 1,
     borderRadius: 22,
+    padding: 14,
+    alignItems: 'center',
+    gap: 4,
+  },
+
+  statIcon: {
+    fontSize: 18,
+  },
+
+  statValue: {
+    fontSize: 23,
+    fontWeight: '900',
+  },
+
+  statLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+
+  selectCard: {
+    borderWidth: 1,
+    borderRadius: 24,
+    padding: 16,
+    gap: 12,
+  },
+
+  rolesList: {
+    gap: 10,
+    paddingRight: 4,
+  },
+
+  roleOption: {
+    borderWidth: 1,
+    borderRadius: 18,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    minWidth: 150,
+    gap: 4,
+  },
+
+  roleOptionTitle: {
+    fontSize: 14,
+    fontWeight: '900',
+  },
+
+  roleOptionSubtitle: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+
+  selectedRoleBox: {
+    borderWidth: 1,
+    borderRadius: 18,
+    padding: 14,
+    gap: 4,
+  },
+
+  selectedRoleTitle: {
+    fontSize: 14,
+    fontWeight: '900',
+  },
+
+  selectedRoleText: {
+    fontSize: 13,
+  },
+
+  createCard: {
+    borderWidth: 1,
+    borderRadius: 24,
     padding: 16,
     gap: 12,
   },
@@ -456,153 +585,141 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
 
-  roleList: {
-    gap: 10,
-    paddingRight: 8,
-  },
-
-  roleOption: {
-    width: 220,
-    borderWidth: 1,
-    borderRadius: 16,
-    padding: 14,
-    gap: 6,
-  },
-
-  roleOptionTitle: {
-    fontSize: 15,
-    fontWeight: '900',
-  },
-
-  roleOptionMeta: {
+  sectionSubtitle: {
     fontSize: 13,
-    lineHeight: 18,
+    lineHeight: 19,
   },
 
   publishButton: {
-    paddingVertical: 14,
-    borderRadius: 16,
+    height: 50,
+    borderRadius: 18,
     alignItems: 'center',
+    justifyContent: 'center',
   },
 
-  buttonText: {
+  publishButtonText: {
     color: '#fff',
     fontWeight: '900',
-    fontSize: 16,
+    fontSize: 15,
   },
 
-  listHeader: {
-    gap: 4,
-    marginTop: 4,
+  feedHeader: {
+    gap: 3,
+  },
+
+  feedTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+  },
+
+  feedSubtitle: {
+    fontSize: 13,
   },
 
   postCard: {
     borderWidth: 1,
-    borderRadius: 20,
+    borderRadius: 24,
     padding: 16,
-    gap: 10,
+    gap: 14,
   },
 
-  postTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  postHeader: {
     gap: 12,
   },
 
+  authorRow: {
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'center',
+  },
+
+  avatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+
+  avatarText: {
+    fontSize: 20,
+    fontWeight: '900',
+  },
+
+  authorName: {
+    fontSize: 16,
+    fontWeight: '900',
+  },
+
+  postMeta: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+
   roleBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 11,
+    paddingVertical: 7,
     borderRadius: 999,
   },
 
   roleBadgeText: {
     fontSize: 12,
-    fontWeight: '800',
-  },
-
-  postDate: {
-    fontSize: 12,
-  },
-
-  postRoleName: {
-    fontSize: 17,
     fontWeight: '900',
-  },
-
-  postAuthor: {
-    fontSize: 13,
-    fontWeight: '700',
   },
 
   postContent: {
     fontSize: 15,
-    lineHeight: 22,
+    lineHeight: 23,
   },
 
-  toggleButton: {
-    borderWidth: 1,
-    borderRadius: 14,
-    paddingVertical: 12,
-    alignItems: 'center',
-    marginTop: 4,
-  },
-
-  toggleButtonText: {
-    fontWeight: '800',
-  },
-
-  commentsWrapper: {
-    marginTop: 10,
-    gap: 10,
-  },
-
-  commentCard: {
-    borderWidth: 1,
-    borderRadius: 16,
-    padding: 12,
-    gap: 6,
-  },
-
-  commentHeader: {
+  postFooter: {
+    borderTopWidth: 1,
+    paddingTop: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: 8,
+    gap: 10,
+    flexWrap: 'wrap',
+  },
+
+  footerItem: {
+    flexDirection: 'row',
+    gap: 6,
     alignItems: 'center',
   },
 
-  commentAuthor: {
+  footerIcon: {
     fontSize: 13,
-    fontWeight: '800',
-    flex: 1,
   },
 
-  commentDate: {
-    fontSize: 11,
-  },
-
-  commentContent: {
-    fontSize: 14,
-    lineHeight: 20,
-  },
-
-  commentButton: {
-    paddingVertical: 12,
-    borderRadius: 14,
-    alignItems: 'center',
+  footerText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
 
   emptyCard: {
     borderWidth: 1,
-    borderRadius: 22,
+    borderRadius: 24,
     padding: 24,
     alignItems: 'center',
     gap: 8,
     marginTop: 8,
   },
 
+  emptyIcon: {
+    fontSize: 34,
+  },
+
   emptyTitle: {
     fontSize: 18,
     fontWeight: '900',
+    textAlign: 'center',
+  },
+
+  emptyText: {
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: 'center',
   },
 });
