@@ -1,7 +1,7 @@
 - João Vitor Lopes Santana RM560781
-- Adão Yuri Ferreir da Silva RM559223
+- Adão Yuri Ferreira da Silva RM559223
 
-- Link Vídeo: https://www.youtube.com/watch?v=TeHJiiWlqAA
+- Link Vídeo: https://youtube.com/shorts/D7A6rGZhwRE?si=xovvqY6nCrfjyPKl
 
 <h1 align="center"> Rolé App</h1>
 
@@ -36,6 +36,31 @@ O projeto foi desenvolvido com foco em:
 - integração com APIs reais
 - persistência de dados
 - experiência moderna de usuário
+
+---
+
+## Arquitetura do Projeto
+
+O aplicativo foi desenvolvido utilizando arquitetura baseada em componentes reutilizáveis e separação entre frontend mobile, serviços de API e gerenciamento de estado.
+
+### Frontend
+- React Native
+- Expo
+- Expo Router
+- TypeScript
+- Tailwind/NativeWind
+
+### Backend
+- APIs REST
+- Integração Oracle APEX
+- Persistência externa
+
+### Gerenciamento de Estado
+- TanStack Query
+- Context API
+
+### Armazenamento Local
+- AsyncStorage para persistência de sessão
 
 ---
 
@@ -104,6 +129,70 @@ O projeto foi desenvolvido com foco em:
 
 ---
 
+## Diferenciais Implementados
+
+- Tema claro e escuro
+- Feed social integrado
+- Sistema de amizades
+- CRUD completo de eventos
+- Notificações locais
+- Persistência de sessão
+- Integração com Oracle APEX
+- Distribuição Android via Firebase
+- Tela Sobre o App com hash da build
+
+---
+
+## Estrutura do Projeto
+
+```bash
+app/
+components/
+src/
+ ├── services/
+ ├── hooks/
+ ├── contexts/
+ ├── types/
+assets/
+```
+
+A estrutura foi organizada visando escalabilidade, componentização e reutilização de código.
+
+---
+
+## Como Executar
+
+### Instalar dependências
+
+```bash
+npm install
+```
+
+### Executar projeto
+
+```bash
+npx expo start
+```
+
+### Build Android
+
+```bash
+eas build -p android --profile preview
+```
+
+---
+
+## Distribuição Mobile
+
+A aplicação Android foi gerada utilizando EAS Build e disponibilizada através do Firebase App Distribution.
+
+O aplicativo também possui uma tela “Sobre o App”, contendo:
+- versão da aplicação
+- hash do commit utilizado na build
+- rastreabilidade da versão entregue
+
+---
+
 ## Telas do App
 
 | Tela | Descrição |
@@ -145,7 +234,7 @@ O projeto foi desenvolvido com foco em:
 
 ---
 
-### Notificações | Com/Clean
+### Notificações | Com/Limpo
 <p align="center">
   <img src="assets/screenshots/not.jpeg" width="250" />
 </p>
@@ -230,7 +319,7 @@ O projeto foi desenvolvido com foco em:
 
 ---
 
-### Notificações | Com/Clean
+### Notificações | Com/Limpo
 <p align="center">
   <img src="assets/screenshots/notb.jpeg" width="250" />
 </p>
